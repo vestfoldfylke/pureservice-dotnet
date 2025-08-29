@@ -20,7 +20,10 @@
         <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.0.0" />
         <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="2.0.0" />
         <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="2.0.2" />
+        <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.OpenApi" Version="1.5.1" />
         <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.5" />
+        <PackageReference Include="Vestfold.Extensions.Logging" Version="1.0.2" />
+        <PackageReference Include="Vestfold.Extensions.Metrics" Version="1.0.0" />
     </ItemGroup>
 
     <ItemGroup>
