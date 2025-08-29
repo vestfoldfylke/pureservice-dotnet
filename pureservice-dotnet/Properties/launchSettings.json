@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "pureservice_dotnet": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7277",
+      "launchBrowser": false
+    }
+  }
+}
