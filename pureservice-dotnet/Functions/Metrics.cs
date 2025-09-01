@@ -4,19 +4,16 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
-using Vestfold.Extensions.Metrics.Services;
 
 namespace pureservice_dotnet.Functions;
 
 public class MetricsEndpoint
 {
     private readonly ILogger<MetricsEndpoint> _logger;
-    private readonly IMetricsService _metricsService;
 
-    public MetricsEndpoint(ILogger<MetricsEndpoint> logger, IMetricsService metricsService)
+    public MetricsEndpoint(ILogger<MetricsEndpoint> logger)
     {
         _logger = logger;
-        _metricsService = metricsService;
     }
 
     [Function("Metrics")]

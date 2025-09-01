@@ -1,6 +1,8 @@
 using Microsoft.Azure.Functions.Worker.Builder;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Prometheus;
+using pureservice_dotnet.Services;
 using Vestfold.Extensions.Logging;
 using Vestfold.Extensions.Metrics;
 
@@ -10,6 +12,9 @@ builder.ConfigureFunctionsWebApplication();
 
 builder.Services.AddVestfoldMetrics();
 builder.Logging.AddVestfoldLogging();
+
+builder.Services.AddSingleton<IPureserviceCaller, PureserviceCaller>();
+builder.Services.AddSingleton<IPureserviceUserService, PureserviceUserService>();
 
 // Configure the service container to collect Prometheus metrics from all registered HttpClients
 builder.Services.UseHttpClientMetrics();
