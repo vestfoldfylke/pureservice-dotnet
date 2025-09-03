@@ -22,6 +22,8 @@ public class PureserviceCaller : IPureserviceCaller
         WriteIndented = true
     };
     
+    private const string MetricsServicePrefix = "API";
+    
     public PureserviceCaller(IConfiguration configuration, ILogger<PureserviceCaller> logger, IMetricsService metricsService)
     {
         _logger = logger;
@@ -97,7 +99,7 @@ public class PureserviceCaller : IPureserviceCaller
         }
         finally
         {
-            _metricsService.Count($"{Constants.MetricsPrefix}_GetRequest", "Number of GET requests to Pureservice",
+            _metricsService.Count($"{Constants.MetricsPrefix}_{MetricsServicePrefix}_GetRequest", "Number of GET requests to Pureservice",
                 (Constants.MetricsResultLabelName, isSuccess ? Constants.MetricsResultSuccessLabelValue : Constants.MetricsResultFailedLabelValue));
         }
     }
@@ -108,7 +110,7 @@ public class PureserviceCaller : IPureserviceCaller
         
         _logger.LogInformation("Sending PATCH request to Pureservice: {Endpoint} with return type {Type}", endpoint, typeof(T).Name);
         
-        var jsonPayload = JsonSerializer.Serialize(payload);
+        var jsonPayload = JsonSerializer.Serialize(payload, _jsonOptions);
         var content = new StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/json");
         var request = new HttpRequestMessage(HttpMethod.Patch, endpoint)
         {
@@ -160,7 +162,7 @@ public class PureserviceCaller : IPureserviceCaller
         }
         finally
         {
-            _metricsService.Count($"{Constants.MetricsPrefix}_PatchRequest", "Number of PATCH requests to Pureservice",
+            _metricsService.Count($"{Constants.MetricsPrefix}_{MetricsServicePrefix}_PatchRequest", "Number of PATCH requests to Pureservice",
                 (Constants.MetricsResultLabelName, isSuccess ? Constants.MetricsResultSuccessLabelValue : Constants.MetricsResultFailedLabelValue));
         }
     }
@@ -171,7 +173,7 @@ public class PureserviceCaller : IPureserviceCaller
         
         _logger.LogInformation("Sending PATCH request to Pureservice: {Endpoint} without return type", endpoint);
         
-        var jsonPayload = JsonSerializer.Serialize(payload);
+        var jsonPayload = JsonSerializer.Serialize(payload, _jsonOptions);
         var content = new StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/json");
         var request = new HttpRequestMessage(HttpMethod.Patch, endpoint)
         {
@@ -220,7 +222,70 @@ public class PureserviceCaller : IPureserviceCaller
         }
         finally
         {
-            _metricsService.Count($"{Constants.MetricsPrefix}_PatchRequest", "Number of PATCH requests to Pureservice",
+            _metricsService.Count($"{Constants.MetricsPrefix}_{MetricsServicePrefix}_PatchRequest", "Number of PATCH requests to Pureservice",
+                (Constants.MetricsResultLabelName, isSuccess ? Constants.MetricsResultSuccessLabelValue : Constants.MetricsResultFailedLabelValue));
+        }
+    }
+    
+    public async Task<T?> PostAsync<T>(string endpoint, object payload) where T : class
+    {
+        RemoveAcceptHeaderIfExists();
+        
+        _logger.LogInformation("Sending POST request to Pureservice: {Endpoint} with return type {Type}", endpoint, typeof(T).Name);
+        
+        var jsonPayload = JsonSerializer.Serialize(payload, _jsonOptions);
+        var content = new StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/vnd.api+json");
+        var request = new HttpRequestMessage(HttpMethod.Post, endpoint)
+        {
+            Content = content
+        };
+        
+        var (response, responseContent, statusCode, isSuccess) = await CallPureservice(request);
+
+        try
+        {
+            response.EnsureSuccessStatusCode();
+
+            var result = JsonSerializer.Deserialize<T>(responseContent, _jsonOptions)
+                         ?? throw new InvalidOperationException("Deserialization returned null");
+
+            _logger.LogInformation(
+                "POST request successful to Pureservice: {Endpoint} with return type {Type} and StatusCode {StatusCode}",
+                endpoint, typeof(T).Name, statusCode);
+
+            return result;
+        }
+        catch (ArgumentNullException ex)
+        {
+            _logger.LogError(ex,
+                "ArgumentNullException when calling Pureservice POST: {Endpoint} with return type {Type}. StatusCode: {StatusCode}. Content: {Content}",
+                endpoint, typeof(T).Name, statusCode, responseContent);
+            return null;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex,
+                "HttpRequestException when calling Pureservice POST: {Endpoint} with return type {Type}. StatusCode: {StatusCode}. Content: {Content}",
+                endpoint, typeof(T).Name, statusCode, responseContent);
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex,
+                "JsonException when deserializing response from Pureservice POST: {Endpoint} with return type {Type}. StatusCode: {StatusCode}. Content: {Content}",
+                endpoint, typeof(T).Name, statusCode, responseContent);
+            return null;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex,
+                "InvalidOperationException when calling Pureservice POST: {Endpoint} with return type {Type}. StatusCode: {StatusCode}. Content: {Content}",
+                endpoint, typeof(T).Name, statusCode, responseContent);
+            return null;
+        }
+        finally
+        {
+            _metricsService.Count($"{Constants.MetricsPrefix}_{MetricsServicePrefix}_PostRequest", "Number of POST requests to Pureservice",
                 (Constants.MetricsResultLabelName, isSuccess ? Constants.MetricsResultSuccessLabelValue : Constants.MetricsResultFailedLabelValue));
         }
     }
@@ -231,7 +296,7 @@ public class PureserviceCaller : IPureserviceCaller
         
         _logger.LogInformation("Sending PUT request to Pureservice: {Endpoint} with return type {Type}", endpoint, typeof(T).Name);
         
-        var jsonPayload = JsonSerializer.Serialize(payload);
+        var jsonPayload = JsonSerializer.Serialize(payload, _jsonOptions);
         var content = new StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/vnd.api+json");
         var request = new HttpRequestMessage(HttpMethod.Put, endpoint)
         {
@@ -283,7 +348,7 @@ public class PureserviceCaller : IPureserviceCaller
         }
         finally
         {
-            _metricsService.Count($"{Constants.MetricsPrefix}_PutRequest", "Number of PUT requests to Pureservice",
+            _metricsService.Count($"{Constants.MetricsPrefix}_{MetricsServicePrefix}_PutRequest", "Number of PUT requests to Pureservice",
                 (Constants.MetricsResultLabelName, isSuccess ? Constants.MetricsResultSuccessLabelValue : Constants.MetricsResultFailedLabelValue));
         }
     }

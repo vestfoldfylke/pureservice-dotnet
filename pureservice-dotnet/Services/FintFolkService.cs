@@ -57,9 +57,8 @@ public class FintFolkService : IFintFolkService
         };
     }
 
-    public async Task<FintStudent> GetStudent(string userPrincipalName) =>
-        await GetAsync<FintStudent>($"student/upn/{userPrincipalName}?skipCache=true") ??
-        throw new InvalidOperationException($"Student with UPN {userPrincipalName} not found");
+    public async Task<FintStudent?> GetStudent(string userPrincipalName) =>
+        await GetAsync<FintStudent>($"student/upn/{userPrincipalName}?skipCache=true");
     
     private async Task<AccessToken> GetAccessToken()
     {

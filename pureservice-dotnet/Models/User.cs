@@ -5,17 +5,17 @@ namespace pureservice_dotnet.Models;
 
 public class User
 {
-    public string? FirstName { get; init; }
-    public string? LastName { get; init; }
-    public string? MiddleName { get; init; }
-    public string? FullName { get; init; }
-    public string? Title { get; init; }
-    public string? Location { get; init; }
-    public string? Department { get; init; }
+    public required string FirstName { get; init; }
+    public required string LastName { get; init; }
+    public required string MiddleName { get; init; }
+    public required string FullName { get; init; }
+    public required string Title { get; init; }
+    public required string Location { get; init; }
+    public required string Department { get; init; }
     public string? Notes { get; init; }
     public bool IsAnonymized { get; init; }
     public bool IsSuperuser { get; init; }
-    public Links? Links { get; init; }
+    public required Links Links { get; init; }
     public int? ManagerId { get; init; }
     public int? CompanyId { get; init; }
     public int? CompanyDepartmentId { get; init; }
@@ -37,10 +37,10 @@ public class User
     public DateTime? UnavailableChangedByDate { get; init; }
     public bool Disabled { get; init; }
     public Guid? ImportUniqueKey { get; init; }
-    public int Id { get; init; }
-    public DateTime Created { get; init; }
+    public required int Id { get; init; }
+    public required DateTime Created { get; init; }
     public DateTime? Modified { get; init; }
-    public int? CreatedById { get; init; }
+    public required int CreatedById { get; init; }
     public int? ModifiedById { get; init; }
-    public string? ManagerFullName{ get; init; }
+    public required string ManagerFullName{ get; init; }
 }

@@ -5,6 +5,9 @@ namespace pureservice_dotnet.Models;
 
 public class Linked
 {
+    [JsonPropertyName("emailaddresses")]
+    public List<EmailAddress>? EmailAddresses { get; init; }
+    
     [JsonPropertyName("phonenumbers")]
     public List<PhoneNumber>? PhoneNumbers { get; init; }
 }

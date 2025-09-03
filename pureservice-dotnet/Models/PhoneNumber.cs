@@ -1,14 +1,15 @@
 using System;
+using pureservice_dotnet.Models.Enums;
 
 namespace pureservice_dotnet.Models;
 
 public record PhoneNumber(
-    string? Number,
+    string Number,
     string? NormalizedNumber,
-    int? Type,
+    PhoneNumberType? Type,
     int? UserId,
-    int? Id,
-    DateTime? Created,
+    int Id,
+    DateTime Created,
     DateTime? Modified,
-    int? CreatedById,
+    int CreatedById,
     int? ModifiedById);

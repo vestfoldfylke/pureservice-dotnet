@@ -16,8 +16,10 @@ builder.Services.AddVestfoldMetrics();
 builder.Logging.AddVestfoldLogging();
 
 builder.Services.AddSingleton<IPureserviceCaller, PureserviceCaller>();
+builder.Services.AddSingleton<IPureservicePhoneNumberService, PureservicePhoneNumberService>();
 builder.Services.AddSingleton<IPureserviceUserService, PureserviceUserService>();
 builder.Services.AddSingleton<IFintFolkService, FintFolkService>();
+builder.Services.AddSingleton<IGraphService, GraphService>();
 
 // Configure the service container to collect Prometheus metrics from all registered HttpClients
 builder.Services.UseHttpClientMetrics();

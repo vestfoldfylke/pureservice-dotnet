@@ -5,5 +5,5 @@ namespace pureservice_dotnet.Services;
 
 public interface IFintFolkService
 {
-    Task<FintStudent> GetStudent(string userPrincipalName);
+    Task<FintStudent?> GetStudent(string userPrincipalName);
 }
