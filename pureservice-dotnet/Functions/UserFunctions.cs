@@ -18,7 +18,7 @@ namespace pureservice_dotnet.Functions;
 
 public class UserFunctions
 {
-    private readonly IFintFolkService _fintFolkService;
+    private readonly IFintService _fintService;
     private readonly IGraphService _graphService;
     private readonly ILogger<UserFunctions> _logger;
     private readonly IMetricsService _metricsService;
@@ -27,11 +27,11 @@ public class UserFunctions
 
     private readonly string _studentEmailDomain;
 
-    public UserFunctions(IConfiguration configuration, IFintFolkService fintFolkService, IGraphService graphService, ILogger<UserFunctions> logger,
+    public UserFunctions(IConfiguration configuration, IFintService fintService, IGraphService graphService, ILogger<UserFunctions> logger,
         IMetricsService metricsService, IPureservicePhoneNumberService pureservicePhoneNumberService,
         IPureserviceUserService pureserviceUserService)
     {
-        _fintFolkService = fintFolkService;
+        _fintService = fintService;
         _graphService = graphService;
         _logger = logger;
         _metricsService = metricsService;
@@ -115,24 +115,29 @@ public class UserFunctions
 
     private async Task HandleStudent(User user, EmailAddress emailAddress, PhoneNumber? phoneNumber, SynchronizationResult synchronizationResult)
     {
-        var student = await _fintFolkService.GetStudent(emailAddress.Email);
-        if (student is null)
+        var student = await _fintService.GetStudent(emailAddress.Email);
+
+        var studentEntry = student?["data"]?["elev"];
+        if (studentEntry is null)
         {
-            _logger.LogWarning("No student found in FintFolk for Email '{Email}' on UserId {UserId}", emailAddress.Email, user.Id);
+            _logger.LogWarning("No student found in FINT for Email '{Email}' on UserId {UserId}", emailAddress.Email, user.Id);
             synchronizationResult.StudentPhoneNumberErrorCount++;
             return;
         }
 
-        if (student.Mobilephone is null)
+        var studentMobilePhone = studentEntry["kontaktinformasjon"]?["mobiltelefonnummer"]?.ToString() ??
+                                 studentEntry["person"]?["kontaktinformasjon"]?["mobiltelefonnummer"]?.ToString() ??
+                                 null;
+        if (studentMobilePhone is null)
         {
-            _logger.LogWarning("No phone number found for student with Email '{Email}' on UserId {UserId} in FintFolk", emailAddress.Email, user.Id);
+            _logger.LogWarning("No phone number found for student with Email '{Email}' on UserId {UserId} in FINT", emailAddress.Email, user.Id);
             synchronizationResult.StudentPhoneNumberErrorCount++;
             return;
         }
 
         if (phoneNumber is null)
         {
-            var phoneNumberResult = await _pureservicePhoneNumberService.AddNewPhoneNumberAndLinkToUser(student.Mobilephone, PhoneNumberType.Mobile, user.Id);
+            var phoneNumberResult = await _pureservicePhoneNumberService.AddNewPhoneNumberAndLinkToUser(studentMobilePhone, PhoneNumberType.Mobile, user.Id);
             if (phoneNumberResult is null)
             {
                 synchronizationResult.StudentPhoneNumberErrorCount++;
@@ -150,14 +155,14 @@ public class UserFunctions
             return;
         }
         
-        if (phoneNumber.Number == student.Mobilephone)
+        if (phoneNumber.Number == studentMobilePhone)
         {
             _logger.LogInformation("Phone number on student with UserId {UserId} is up to date", user.Id);
             synchronizationResult.StudentPhoneNumberUpToDateCount++;
             return;
         }
         
-        if (await _pureservicePhoneNumberService.UpdatePhoneNumber(phoneNumber.Id, student.Mobilephone,
+        if (await _pureservicePhoneNumberService.UpdatePhoneNumber(phoneNumber.Id, studentMobilePhone,
                 PhoneNumberType.Mobile, user.Id))
         {
             synchronizationResult.StudentPhoneNumberUpdatedCount++;
