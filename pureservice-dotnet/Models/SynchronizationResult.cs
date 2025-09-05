@@ -2,9 +2,11 @@ namespace pureservice_dotnet.Models;
 
 public class SynchronizationResult
 {
+    public int UserMissing { get; set; }
     public int UserMissingImportUniqueKeyCount { get; set; }
     public int UserMissingEmailAddressCount { get; set; }
     public int EmployeeCount { get; set; }
+    public int EmployeeManagerMissingInEntraCount { get; set; }
     public int EmployeeManagerErrorCount { get; set; }
     public int EmployeeManagerAddedCount { get; set; }
     public int EmployeeManagerUpToDateCount { get; set; }

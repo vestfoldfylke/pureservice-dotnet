@@ -36,7 +36,7 @@ public class User
     public int? UnavailableChangedById { get; init; }
     public DateTime? UnavailableChangedByDate { get; init; }
     public bool Disabled { get; init; }
-    public Guid? ImportUniqueKey { get; init; }
+    public string? ImportUniqueKey { get; init; }
     public required int Id { get; init; }
     public required DateTime Created { get; init; }
     public DateTime? Modified { get; init; }

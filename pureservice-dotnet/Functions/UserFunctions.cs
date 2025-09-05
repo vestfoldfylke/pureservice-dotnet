@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Worker;
@@ -57,70 +58,72 @@ public class UserFunctions
     {
         _logger.LogInformation("C# HTTP trigger function processed a request.");
         _metricsService.Count("UserFunctions_Synchronize");
-        
-        var userList = await _pureserviceUserService.GetUsers(["emailaddress", "phonenumbers"]);
 
-        if (userList.Linked?.EmailAddresses is null || userList.Linked?.PhoneNumbers is null)
+        var entraEmployees = await _graphService.GetEmployees();
+
+        var pureserviceUsers = await _pureserviceUserService.GetUsers(["emailaddress", "phonenumbers"]);
+
+        if (pureserviceUsers.Linked?.EmailAddresses is null || pureserviceUsers.Linked?.PhoneNumbers is null)
         {
             _logger.LogError("No linked email addresses or phone numbers found in user list");
             return new BadRequestObjectResult("No linked email addresses or phone numbers found in user list");
         }
-        
+
         var synchronizationResult = new SynchronizationResult();
 
-        foreach (var user in userList.Users)
+        foreach (var pureserviceUser in pureserviceUsers.Users)
         {
-            _logger.LogInformation("Processing user '{DisplayName}' with UserId {UserId}", user.FullName, user.Id);
-            
-            if (user.ImportUniqueKey is null)
+            _logger.LogInformation("Processing user '{DisplayName}' with UserId {UserId}", pureserviceUser.FullName, pureserviceUser.Id);
+
+            if (pureserviceUser.ImportUniqueKey is null)
             {
-                _logger.LogInformation("UserId {UserId} has no ImportUniqueKey, meaning they are created manually. Skipping", user.Id);
+                _logger.LogInformation("UserId {UserId} has no ImportUniqueKey, meaning they are created manually. Skipping", pureserviceUser.Id);
                 synchronizationResult.UserMissingImportUniqueKeyCount++;
                 continue;
             }
 
-            if (user.Links.EmailAddress is null)
+            if (pureserviceUser.Links.EmailAddress is null)
             {
-                _logger.LogWarning("UserId {UserId} has no email address, cannot look up in source systems. Skipping", user.Id);
+                _logger.LogWarning("UserId {UserId} has no email address, cannot look up in source systems. Skipping", pureserviceUser.Id);
                 synchronizationResult.UserMissingEmailAddressCount++;
                 continue;
             }
-            
-            var primaryEmailAddress = userList.Linked.EmailAddresses.Find(e => e.Id == user.Links.EmailAddress.Id);
+
+            var primaryEmailAddress = pureserviceUsers.Linked.EmailAddresses.Find(e => e.Id == pureserviceUser.Links.EmailAddress.Id);
 
             if (primaryEmailAddress is null)
             {
-                _logger.LogWarning("UserId {UserId} has no primary email address, cannot look up in source systems. Skipping", user.Id);
+                _logger.LogWarning("UserId {UserId} has no primary email address, cannot look up in source systems. Skipping", pureserviceUser.Id);
                 synchronizationResult.UserMissingEmailAddressCount++;
                 continue;
             }
 
             if (primaryEmailAddress.Email.Contains(_studentEmailDomain, StringComparison.InvariantCultureIgnoreCase))
             {
-                var primaryPhoneNumber = user.Links.PhoneNumber is not null
-                    ? userList.Linked.PhoneNumbers.Find(p => p.Id == user.Links.PhoneNumber.Id)
+                var primaryPhoneNumber = pureserviceUser.Links.PhoneNumber is not null
+                    ? pureserviceUsers.Linked.PhoneNumbers.Find(p => p.Id == pureserviceUser.Links.PhoneNumber.Id)
                     : null;
 
                 synchronizationResult.StudentCount++;
-                await HandleStudent(user, primaryEmailAddress, primaryPhoneNumber, synchronizationResult);
+                await HandleStudent(pureserviceUser, primaryEmailAddress, primaryPhoneNumber, synchronizationResult);
                 continue;
             }
 
             synchronizationResult.EmployeeCount++;
-            await HandleEmployee(user, primaryEmailAddress, synchronizationResult);
+            await HandleEmployee(pureserviceUser, entraEmployees, pureserviceUsers, synchronizationResult);
         }
-        
+
         return new JsonResult(synchronizationResult);
     }
 
-    private async Task HandleStudent(User user, EmailAddress emailAddress, PhoneNumber? phoneNumber, SynchronizationResult synchronizationResult)
+    private async Task HandleStudent(User pureserviceUser, EmailAddress emailAddress, PhoneNumber? phoneNumber, SynchronizationResult synchronizationResult)
     {
         var student = await _fintService.GetStudent(emailAddress.Email);
 
         var studentEntry = student?["data"]?["elev"];
         if (studentEntry is null)
         {
-            _logger.LogWarning("No student found in FINT for Email '{Email}' on UserId {UserId}", emailAddress.Email, user.Id);
+            _logger.LogWarning("No student found in FINT for Email '{Email}' on UserId {UserId}", emailAddress.Email, pureserviceUser.Id);
             synchronizationResult.StudentPhoneNumberErrorCount++;
             return;
         }
@@ -130,14 +133,14 @@ public class UserFunctions
                                  null;
         if (studentMobilePhone is null)
         {
-            _logger.LogWarning("No phone number found for student with Email '{Email}' on UserId {UserId} in FINT", emailAddress.Email, user.Id);
+            _logger.LogWarning("No phone number found for student with Email '{Email}' on UserId {UserId} in FINT", emailAddress.Email, pureserviceUser.Id);
             synchronizationResult.StudentPhoneNumberErrorCount++;
             return;
         }
 
         if (phoneNumber is null)
         {
-            var phoneNumberResult = await _pureservicePhoneNumberService.AddNewPhoneNumberAndLinkToUser(studentMobilePhone, PhoneNumberType.Mobile, user.Id);
+            var phoneNumberResult = await _pureservicePhoneNumberService.AddNewPhoneNumberAndLinkToUser(studentMobilePhone, PhoneNumberType.Mobile, pureserviceUser.Id);
             if (phoneNumberResult is null)
             {
                 synchronizationResult.StudentPhoneNumberErrorCount++;
@@ -145,7 +148,7 @@ public class UserFunctions
             }
 
             synchronizationResult.StudentPhoneNumberCreatedAndLinkedCount++;
-            if (await _pureserviceUserService.RegisterPhoneNumberAsDefault(user.Id, phoneNumberResult.Id))
+            if (await _pureserviceUserService.RegisterPhoneNumberAsDefault(pureserviceUser.Id, phoneNumberResult.Id))
             {
                 synchronizationResult.StudentPhoneNumberSetAsDefaultCount++;
                 return;
@@ -157,13 +160,13 @@ public class UserFunctions
         
         if (phoneNumber.Number == studentMobilePhone)
         {
-            _logger.LogInformation("Phone number on student with UserId {UserId} is up to date", user.Id);
+            _logger.LogInformation("Phone number on student with UserId {UserId} is up to date", pureserviceUser.Id);
             synchronizationResult.StudentPhoneNumberUpToDateCount++;
             return;
         }
         
         if (await _pureservicePhoneNumberService.UpdatePhoneNumber(phoneNumber.Id, studentMobilePhone,
-                PhoneNumberType.Mobile, user.Id))
+                PhoneNumberType.Mobile, pureserviceUser.Id))
         {
             synchronizationResult.StudentPhoneNumberUpdatedCount++;
             return;
@@ -172,67 +175,48 @@ public class UserFunctions
         synchronizationResult.StudentPhoneNumberErrorCount++;
     }
     
-    private async Task HandleEmployee(User user, EmailAddress emailAddress, SynchronizationResult synchronizationResult)
+    private async Task HandleEmployee(User pureserviceUser, List<Microsoft.Graph.Models.User> entraEmployees, UserList pureserviceUsers, SynchronizationResult synchronizationResult)
     {
-        var manager = await _graphService.GetEmployeeManager(emailAddress.Email);
-        if (manager is null)
+        var entraUser = entraEmployees.Find(employee =>
+            !string.IsNullOrEmpty(employee.Id) && employee.Id == pureserviceUser.ImportUniqueKey);
+        if (entraUser is null)
         {
-            _logger.LogWarning("No employee found in Entra ID for Email '{Email}' or more likely no manager set on employee in Entra ID", emailAddress.Email);
+            _logger.LogError("UserId {UserId} not found in Entra ID by ImportUniqueKey {ImportUniqueKey}. Skipping", pureserviceUser.Id, pureserviceUser.ImportUniqueKey);
+            synchronizationResult.UserMissing++;
+            return;
+        }
+
+        if (string.IsNullOrEmpty(entraUser.Manager?.Id))
+        {
+            _logger.LogWarning("UserId {UserId} has no manager set in Entra ID, cannot synchronize manager. Skipping", pureserviceUser.Id);
+            synchronizationResult.EmployeeManagerMissingInEntraCount++;
+            return;
+        }
+            
+        var entraManagerUser = entraEmployees.Find(employee => !string.IsNullOrEmpty(employee.Id) && employee.Id == entraUser.Manager.Id);
+        if (entraManagerUser is null)
+        {
+            _logger.LogError("Manager with Id {ManagerId} not found in Entra ID, cannot synchronize manager. Skipping", entraUser.Manager.Id);
+            synchronizationResult.EmployeeManagerMissingInEntraCount++;
+            return;
+        }
+        
+        var pureserviceManagerUser = pureserviceUsers.Users.Find(u => !string.IsNullOrEmpty(u.ImportUniqueKey) && u.ImportUniqueKey == entraUser.Manager.Id);
+        if (pureserviceManagerUser is null)
+        {
+            _logger.LogWarning("No users found in Pureservice with ImportUniqueKey '{ManagerId}', cannot set manager for employee with UserId {UserId}", entraUser.Manager.Id, pureserviceUser.Id);
             synchronizationResult.EmployeeManagerErrorCount++;
             return;
         }
         
-        var managerUsers = await _pureserviceUserService.GetUser($"emailAddress.Email == \"{manager.Mail}\"");
-        User? managerUser = null;
-        
-        switch (managerUsers.Users.Count)
+        if (pureserviceUser.ManagerId == pureserviceManagerUser.Id)
         {
-            case 0:
-                _logger.LogWarning("No users found in Pureservice with email address '{ManagerMail}', cannot set manager for employee with UserId {UserId}", manager.Mail, user.Id);
-                synchronizationResult.EmployeeManagerErrorCount++;
-                return;
-            case > 1:
-            {
-                var importedUsers = managerUsers.Users.FindAll(u => u.ImportUniqueKey is not null);
-                switch (importedUsers.Count)
-                {
-                    case 0:
-                        _logger.LogWarning("Multiple users ({UserCount}) found in Pureservice with email address '{ManagerMail}', none of them are imported. Cannot set manager for employee with UserId {UserId}", managerUsers.Users.Count, manager.Mail, user.Id);
-                        synchronizationResult.EmployeeManagerErrorCount++;
-                        return;
-                    case > 1:
-                        _logger.LogWarning("Multiple users ({UserCount}) found in Pureservice with email address '{ManagerMail}', {ImportedCount} of them are imported. Cannot determine which one to use as manager for employee with UserId {UserId}", managerUsers.Users.Count, manager.Mail, importedUsers.Count, user.Id);
-                        synchronizationResult.EmployeeManagerErrorCount++;
-                        return;
-                    default:
-                        managerUser = importedUsers[0];
-                        _logger.LogInformation("Multiple users ({UserCount}) found in Pureservice with email address '{ManagerMail}', but only 1 is imported and will be used as manager for employee with UserId {UserId}", managerUsers.Users.Count, manager.Mail, user.Id);
-                        break;
-                }
-                break;
-            }
-            case 1:
-            {
-                managerUser = managerUsers.Users[0];
-                if (managerUser.ImportUniqueKey is null)
-                {
-                    _logger.LogWarning("Only 1 user found in Pureservice with email address '{ManagerMail}', but it is created manually. Cannot set manager for employee with UserId {UserId}", manager.Mail, user.Id);
-                    synchronizationResult.EmployeeManagerErrorCount++;
-                    return;
-                }
-                
-                break;
-            }
-        }
-        
-        if (user.ManagerId == managerUser!.Id)
-        {
-            _logger.LogInformation("Manager on employee with UserId {UserId} is up to date with ManagerId {ManagerId}", user.Id, managerUser.Id);
+            _logger.LogInformation("Manager on employee with UserId {UserId} is up to date with ManagerId {ManagerId}", pureserviceUser.Id, pureserviceUser.ManagerId);
             synchronizationResult.EmployeeManagerUpToDateCount++;
             return;
         }
         
-        if (await _pureserviceUserService.UpdateManager(user.Id, managerUser.Id))
+        if (await _pureserviceUserService.UpdateManager(pureserviceUser.Id, pureserviceManagerUser.Id))
         {
             synchronizationResult.EmployeeManagerAddedCount++;
             return;
