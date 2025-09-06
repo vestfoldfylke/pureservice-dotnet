@@ -7,6 +7,12 @@ using Vestfold.Extensions.Metrics.Services;
 
 namespace pureservice_dotnet.Services;
 
+public interface IPureservicePhoneNumberService
+{
+    Task<PhoneNumber?> AddNewPhoneNumberAndLinkToUser(string phoneNumber, PhoneNumberType type, int userId);
+    Task<bool> UpdatePhoneNumber(int phoneNumberId, string phoneNumber, PhoneNumberType type, int userId);
+}
+
 public class PureservicePhoneNumberService : IPureservicePhoneNumberService
 {
     private readonly ILogger<PureservicePhoneNumberService> _logger;

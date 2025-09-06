@@ -9,6 +9,15 @@ using Vestfold.Extensions.Metrics.Services;
 
 namespace pureservice_dotnet.Services;
 
+public interface IPureserviceCaller
+{
+    Task<T?> GetAsync<T>(string endpoint) where T : class;
+    Task<T?> PatchAsync<T>(string endpoint, object payload) where T : class;
+    Task<bool> PatchAsync(string endpoint, object payload);
+    Task<T?> PostAsync<T>(string endpoint, object payload) where T : class;
+    Task<T?> PutAsync<T>(string endpoint, object payload) where T : class;
+}
+
 public class PureserviceCaller : IPureserviceCaller
 {
     private readonly ILogger<PureserviceCaller> _logger;

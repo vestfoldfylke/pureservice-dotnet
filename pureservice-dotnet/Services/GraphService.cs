@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph;
@@ -9,6 +8,12 @@ using Vestfold.Extensions.Authentication.Services;
 using Vestfold.Extensions.Metrics.Services;
 
 namespace pureservice_dotnet.Services;
+
+public interface IGraphService
+{
+    Task<User?> GetEmployeeManager(string userPrincipalName);
+    Task<List<User>> GetEmployees();
+}
 
 public class GraphService : IGraphService
 {
