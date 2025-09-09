@@ -9,7 +9,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
-using Microsoft.Extensions.Configuration;
 using Microsoft.OpenApi.Models;
 using pureservice_dotnet.Models;
 using pureservice_dotnet.Models.Enums;
@@ -28,9 +27,7 @@ public class UserFunctions
     private readonly IPureservicePhysicalAddressService _pureservicePhysicalAddressService;
     private readonly IPureserviceUserService _pureserviceUserService;
 
-    private readonly string _studentEmailDomain;
-
-    public UserFunctions(IConfiguration configuration, IGraphService graphService, ILogger<UserFunctions> logger,
+    public UserFunctions(IGraphService graphService, ILogger<UserFunctions> logger,
         IMetricsService metricsService, IPureserviceEmailAddressService pureserviceEmailAddressService,
         IPureservicePhoneNumberService pureservicePhoneNumberService,
         IPureservicePhysicalAddressService pureservicePhysicalAddressService, IPureserviceUserService pureserviceUserService)
@@ -42,8 +39,6 @@ public class UserFunctions
         _pureservicePhoneNumberService = pureservicePhoneNumberService;
         _pureservicePhysicalAddressService = pureservicePhysicalAddressService;
         _pureserviceUserService = pureserviceUserService;
-        
-        _studentEmailDomain = configuration.GetValue<string>("Student_Email_Domain") ?? throw new InvalidOperationException("Student_Email_Domain is not configured");
     }
 
     [Function("Synchronize")]
@@ -176,11 +171,24 @@ public class UserFunctions
         // NOTE: Create new physical address (with empty fields since we don't need that info in Pureservice for now)
         var physicalAddressResult =
             await _pureservicePhysicalAddressService.AddNewPhysicalAddress(null, null, null, "Norway");
+        if (physicalAddressResult is null)
+        {
+            _logger.LogError("Failed to create physical address for new user with Entra Id {EntraId}. User will not be created",
+                entraUser.Id);
+            synchronizationResult.UserErrorCount++;
+            return;
+        }
                 
         var entraPhoneNumber = _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile");
-        var pureservicePhoneNumber = entraPhoneNumber is not null
-            ? await _pureservicePhoneNumberService.AddNewPhoneNumber(entraPhoneNumber, PhoneNumberType.Mobile)
-            : null;
+        var pureservicePhoneNumber =
+            await _pureservicePhoneNumberService.AddNewPhoneNumber(entraPhoneNumber ?? "", PhoneNumberType.Mobile);
+        if (pureservicePhoneNumber is null)
+        {
+            _logger.LogError("Failed to create phone number for new user with Entra Id {EntraId} and phone number {PhoneNumber}. User will not be created",
+                entraUser.Id, entraPhoneNumber);
+            synchronizationResult.UserErrorCount++;
+            return;
+        }
 
         var pureserviceEmailAddress = await _pureserviceEmailAddressService.AddNewEmailAddress(entraUser.Mail!);
         if (pureserviceEmailAddress is null)
@@ -193,8 +201,7 @@ public class UserFunctions
 
         // NOTE: Create new user with ids for above created entities (include required fields to get needed info)
         var pureserviceUserList = await _pureserviceUserService.CreateNewUser(entraUser, pureserviceManagerUser?.Id,
-            companyId, department?.Name, location?.Name, physicalAddressResult?.Id,
-            pureservicePhoneNumber?.Id, pureserviceEmailAddress.Id);
+            companyId, physicalAddressResult.Id, pureservicePhoneNumber.Id, pureserviceEmailAddress.Id);
         
         var pureserviceUser = pureserviceUserList?.Users.FirstOrDefault();
 

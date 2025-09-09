@@ -43,11 +43,8 @@ public class PureserviceUserServiceTests
 
         const int companyId = 42;
         const int emailAddressId = 9;
-        
-        var departmentName = allProperties ? "IT" : null;
-        var locationName = allProperties ? "Oslo" : null;
-        int? physicalAddressId = allProperties ? 7 : null;
-        int? phoneNumberId = allProperties ? 8 : null;
+        const int physicalAddressId = 7;
+        const int phoneNumberId = 8;
 
         var newPureserviceUser = new User
         {
@@ -69,18 +66,17 @@ public class PureserviceUserServiceTests
             CreatedById = 1
         };
 
-        _pureserviceCaller.PostAsync<UserList>(Arg.Is("user"), Arg.Any<UserList>())
+        _pureserviceCaller.PostAsync<UserList>(Arg.Is<string>(s => s.StartsWith("user")), Arg.Any<object>())
             .Returns(new UserList([newPureserviceUser], new Linked()));
         
-        var userList = await _service.CreateNewUser(entraUser, managerId, companyId, departmentName, locationName,
-            physicalAddressId, phoneNumberId, emailAddressId);
+        var userList = await _service.CreateNewUser(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId);
         
         Assert.NotNull(userList);
         Assert.Single(userList.Users);
     }
     
     [Fact]
-    public async Task CreateNewUser_Should_Return_UserList_With_Zero_Users()
+    public async Task CreateNewUser_Should_Return_Null_When_UserList_Is_Empty()
     {
         var entraUser = new Microsoft.Graph.Models.User
         {
@@ -94,17 +90,13 @@ public class PureserviceUserServiceTests
 
         const int companyId = 42;
         const int emailAddressId = 9;
-        const string departmentName = "IT";
-        const string locationName = "Oslo";
-        
-        int? physicalAddressId = 7;
-        int? phoneNumberId = 8;
+        const int physicalAddressId = 7;
+        const int phoneNumberId = 8;
 
-        _pureserviceCaller.PostAsync<UserList>(Arg.Is("user"), Arg.Any<UserList>())
+        _pureserviceCaller.PostAsync<UserList>(Arg.Is<string>(s => s.StartsWith("user")), Arg.Any<object>())
             .Returns(new UserList([], new Linked()));
         
-        var userList = await _service.CreateNewUser(entraUser, null, companyId, departmentName, locationName,
-            physicalAddressId, phoneNumberId, emailAddressId);
+        var userList = await _service.CreateNewUser(entraUser, null, companyId, physicalAddressId, phoneNumberId, emailAddressId);
         
         Assert.Null(userList);
     }

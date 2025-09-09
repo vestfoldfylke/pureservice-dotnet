@@ -14,7 +14,7 @@ namespace pureservice_dotnet.Services;
 public interface IPureserviceUserService
 {
     Task<UserList?> CreateNewUser(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId,
-        string? departmentName, string? locationName, int? physicalAddressId, int? phoneNumberId, int emailAddressId);
+        int physicalAddressId, int phoneNumberId, int emailAddressId);
     Task<UserList> GetUser(string filter, string[]? entities = null);
     Task<UserList> GetUser(int userId, string[]? entities = null);
     Task<UserList> GetUsers(string[]? entities = null, int start = 0, int limit = 500, bool includeSystemUsers = false, bool includeInactiveUsers = false);
@@ -48,46 +48,44 @@ public class PureserviceUserService : IPureserviceUserService
     }
 
     public async Task<UserList?> CreateNewUser(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId,
-        string? departmentName, string? locationName, int? physicalAddressId, int? phoneNumberId, int emailAddressId)
+        int physicalAddressId, int phoneNumberId, int emailAddressId)
     {
-        List<User> users =
-        [
-            new User
+        var payload = new
+        {
+            users = new List<object>
             {
-                FirstName = entraUser.GivenName!,
-                MiddleName = "",
-                LastName = entraUser.Surname!,
-                FullName = entraUser.DisplayName!,
-                Unavailable = false,
-                Title = entraUser.JobTitle ?? "",
-                ManagerId = managerId,
-                CompanyId = companyId,
-                Notes = null,
-                Role = UserRole.Enduser,
-                Disabled = entraUser.AccountEnabled == false,
-                IsSuperuser = false,
-                ImportUniqueKey = entraUser.Id,
-                FlushNotifications = true, // NOTE: What does this mean?
-                HighlightNotifications = true, // NOTE: What does this mean?
-                NotificationScheme = 1, // NOTE: What does this mean?
-                LanguageId = 2, // NOTE: Norwegian Bokmål
-                EmailAddressId = emailAddressId,
-                Location = locationName,
-                Department = departmentName,
-                Links = new Links
+                new
                 {
-                    Address = physicalAddressId.HasValue ? new Link(physicalAddressId.Value, "physicaladdress") : null,
-                    EmailAddress = new Link(emailAddressId, "emailaddress"),
-                    PhoneNumber = phoneNumberId.HasValue ? new Link(phoneNumberId.Value, "phonenumber") : null,
-                    Company = new Link(companyId, "company")
+                    firstName = entraUser.GivenName!,
+                    middleName = "",
+                    lastName = entraUser.Surname!,
+                    fullName = entraUser.DisplayName!,
+                    unavailable = false,
+                    title = entraUser.JobTitle ?? "",
+                    managerId,
+                    companyId,
+                    notes = "",
+                    role = UserRole.Enduser,
+                    disabled = entraUser.AccountEnabled == false,
+                    isSuperuser = false,
+                    importUniqueKey = entraUser.Id,
+                    flushNotifications = true, // NOTE: What does this mean?
+                    highlightNotifications = true, // NOTE: What does this mean?
+                    notificationScheme = 1, // NOTE: What does this mean?
+                    languageId = 2, // NOTE: Norwegian Bokmål
+                    links = new
+                    {
+                        address = new { id = physicalAddressId, type = "physicaladdress" },
+                        emailAddress = new { id = emailAddressId, type = "emailaddress" },
+                        phoneNumber = new { id = phoneNumberId, type = "phonenumber" },
+                        company = new { id = companyId, type = "company" }
+                    }
                 }
             }
-        ];
-        
-        var payload = new UserList(users, null);
+        };
         
         _logger.LogInformation("Creating new pureservice user with ImportUniqueKey {ImportUniqueKey}", entraUser.Id);
-        var result = await _pureserviceCaller.PostAsync<UserList>($"{BasePath}", payload);
+        var result = await _pureserviceCaller.PostAsync<UserList>($"{BasePath}?include=company,company.departments,company.locations,emailaddress,language,phonenumbers", payload);
 
         if (result is not null)
         {
