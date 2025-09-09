@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "pureservice-dotnet", "pureservice-dotnet\pureservice-dotnet.csproj", "{71F9DCD7-341B-4F1A-91AE-14719D6DF462}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "pureservice-dotnet-tests", "pureservice-dotnet-tests\pureservice-dotnet-tests.csproj", "{4210F431-AF6D-4549-9B15-1790073B4ED8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +14,9 @@ Global
 		{71F9DCD7-341B-4F1A-91AE-14719D6DF462}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{71F9DCD7-341B-4F1A-91AE-14719D6DF462}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{71F9DCD7-341B-4F1A-91AE-14719D6DF462}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4210F431-AF6D-4549-9B15-1790073B4ED8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4210F431-AF6D-4549-9B15-1790073B4ED8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4210F431-AF6D-4549-9B15-1790073B4ED8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4210F431-AF6D-4549-9B15-1790073B4ED8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

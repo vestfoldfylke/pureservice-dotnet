@@ -5,4 +5,4 @@ namespace pureservice_dotnet.Models.ActionModels;
 
 public record AddPhoneNumber(List<NewPhoneNumber> Phonenumbers);
 
-public record NewPhoneNumber(string Number, PhoneNumberType Type, int UserId);
+public record NewPhoneNumber(string Number, PhoneNumberType Type);

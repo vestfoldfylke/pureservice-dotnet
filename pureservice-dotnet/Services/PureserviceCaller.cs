@@ -16,6 +16,7 @@ public interface IPureserviceCaller
     Task<bool> PatchAsync(string endpoint, object payload);
     Task<T?> PostAsync<T>(string endpoint, object payload) where T : class;
     Task<T?> PutAsync<T>(string endpoint, object payload) where T : class;
+    Task<bool> PutAsync(string endpoint, object payload);
 }
 
 public class PureserviceCaller : IPureserviceCaller
@@ -354,6 +355,66 @@ public class PureserviceCaller : IPureserviceCaller
                 "InvalidOperationException when calling Pureservice PUT: {Endpoint} with return type {Type}. StatusCode: {StatusCode}. Content: {Content}",
                 endpoint, typeof(T).Name, statusCode, responseContent);
             return null;
+        }
+        finally
+        {
+            _metricsService.Count($"{Constants.MetricsPrefix}_{MetricsServicePrefix}_PutRequest", "Number of PUT requests to Pureservice",
+                (Constants.MetricsResultLabelName, isSuccess ? Constants.MetricsResultSuccessLabelValue : Constants.MetricsResultFailedLabelValue));
+        }
+    }
+    
+    public async Task<bool> PutAsync(string endpoint, object payload)
+    {
+        RemoveAcceptHeaderIfExists();
+        
+        _logger.LogInformation("Sending PUT request to Pureservice: {Endpoint} without return type", endpoint);
+        
+        var jsonPayload = JsonSerializer.Serialize(payload, _jsonOptions);
+        var content = new StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/vnd.api+json");
+        var request = new HttpRequestMessage(HttpMethod.Put, endpoint)
+        {
+            Content = content
+        };
+        
+        var (response, responseContent, statusCode, isSuccess) = await CallPureservice(request);
+
+        try
+        {
+            response.EnsureSuccessStatusCode();
+
+            _logger.LogInformation(
+                "PUT request successful to Pureservice: {Endpoint} without return type and StatusCode {StatusCode}",
+                endpoint, statusCode);
+
+            return true;
+        }
+        catch (ArgumentNullException ex)
+        {
+            _logger.LogError(ex,
+                "ArgumentNullException when calling Pureservice PUT: {Endpoint} without return type. StatusCode: {StatusCode}. Content: {Content}",
+                endpoint, statusCode, responseContent);
+            return false;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex,
+                "HttpRequestException when calling Pureservice PUT: {Endpoint} without return type. StatusCode: {StatusCode}. Content: {Content}",
+                endpoint, statusCode, responseContent);
+            return false;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex,
+                "JsonException when deserializing response from Pureservice PUT: {Endpoint} without return type. StatusCode: {StatusCode}. Content: {Content}",
+                endpoint, statusCode, responseContent);
+            return false;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogError(ex,
+                "InvalidOperationException when calling Pureservice PUT: {Endpoint} without return type. StatusCode: {StatusCode}. Content: {Content}",
+                endpoint, statusCode, responseContent);
+            return false;
         }
         finally
         {

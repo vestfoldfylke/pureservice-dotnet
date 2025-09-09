@@ -9,8 +9,10 @@ namespace pureservice_dotnet.Services;
 
 public interface IPureservicePhoneNumberService
 {
+    Task<PhoneNumber?> AddNewPhoneNumber(string phoneNumber, PhoneNumberType type);
     Task<PhoneNumber?> AddNewPhoneNumberAndLinkToUser(string phoneNumber, PhoneNumberType type, int userId);
-    Task<bool> UpdatePhoneNumber(int phoneNumberId, string phoneNumber, PhoneNumberType type, int userId);
+    (bool Update, string? PhoneNumber) NeedsPhoneNumberUpdate(PhoneNumber? phoneNumber, string? entraPhoneNumber);
+    Task<bool> UpdatePhoneNumber(int phoneNumberId, string? phoneNumber, PhoneNumberType type, int userId);
 }
 
 public class PureservicePhoneNumberService : IPureservicePhoneNumberService
@@ -27,11 +29,30 @@ public class PureservicePhoneNumberService : IPureservicePhoneNumberService
         _metricsService = metricsService;
         _pureserviceCaller = pureserviceCaller;
     }
+    
+    public async Task<PhoneNumber?> AddNewPhoneNumber(string phoneNumber, PhoneNumberType type)
+    {
+        _logger.LogInformation("Creating PhoneNumber {PhoneNumber}", phoneNumber);
+        var phoneNumberResult = await _pureserviceCaller.PostAsync<PhoneNumber>($"{BasePath}", new AddPhoneNumber([new NewPhoneNumber(phoneNumber, type)]));
+        
+        if (phoneNumberResult is not null)
+        {
+            _logger.LogInformation("Successfully created PhoneNumber {PhoneNumber} with PhoneNumberId {PhoneNumberId}", phoneNumber, phoneNumberResult.Id);
+            _metricsService.Count($"{Constants.MetricsPrefix}_PhoneNumberCreated", "Number of phone numbers created",
+                (Constants.MetricsResultLabelName, Constants.MetricsResultSuccessLabelValue));
+            return phoneNumberResult;
+        }
+        
+        _logger.LogError("Failed to create PhoneNumber {PhoneNumber}", phoneNumber);
+        _metricsService.Count($"{Constants.MetricsPrefix}_PhoneNumberCreated", "Number of phone numbers created",
+            (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
+        return null;
+    }
 
     public async Task<PhoneNumber?> AddNewPhoneNumberAndLinkToUser(string phoneNumber, PhoneNumberType type, int userId)
     {
         _logger.LogInformation("Creating PhoneNumber {PhoneNumber} and linking to UserId {UserId}", phoneNumber, userId);
-        var phoneNumberResult = await _pureserviceCaller.PostAsync<PhoneNumber>($"{BasePath}", new AddPhoneNumber([new NewPhoneNumber(phoneNumber, type, userId)]));
+        var phoneNumberResult = await _pureserviceCaller.PostAsync<PhoneNumber>($"{BasePath}", new AddPhoneNumberWithUser([new NewPhoneNumberWithUser(phoneNumber, type, userId)]));
         
         if (phoneNumberResult is not null)
         {
@@ -47,7 +68,22 @@ public class PureservicePhoneNumberService : IPureservicePhoneNumberService
         return null;
     }
 
-    public async Task<bool> UpdatePhoneNumber(int phoneNumberId, string phoneNumber, PhoneNumberType type, int userId)
+    public (bool Update, string? PhoneNumber) NeedsPhoneNumberUpdate(PhoneNumber? phoneNumber, string? entraPhoneNumber)
+    {
+        if (phoneNumber is null)
+        {
+            return (entraPhoneNumber is not null, entraPhoneNumber);
+        }
+        
+        if (entraPhoneNumber is null)
+        {
+            return (true, null);
+        }
+        
+        return (phoneNumber.Number != entraPhoneNumber, entraPhoneNumber);
+    }
+
+    public async Task<bool> UpdatePhoneNumber(int phoneNumberId, string? phoneNumber, PhoneNumberType type, int userId)
     {
         _logger.LogInformation("Updating PhoneNumberId {PhoneNumberId} to {PhoneNumber} for UserId {UserId}", phoneNumberId, phoneNumber, userId);
         var phoneNumberResult = await _pureserviceCaller.PutAsync<Linked>($"{BasePath}/{phoneNumberId}", new UpdatePhoneNumber([new UpdatePhoneNumberItem(phoneNumberId, phoneNumber, type, userId)]));

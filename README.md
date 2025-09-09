@@ -1,18 +1,45 @@
 # pureservice-dotnet
 
-Synchronization service to update user objects in Pureservice
+Synchronization service to add / update / disable / enable user objects in Pureservice
 
-## Properties updated on employees
+## Properties handled on employees from `Entra ID`
 
-| Property      | Description      | Type   | Default Value | External source |
-|---------------|------------------|--------|---------------|-----------------|
-| `manager`     | Employee manager | string | null          | `Entra ID`      |
+| Property in Pureservice | Property in Source | Description                    | Category     | Type   | Default Value |
+|------------------------|--------------------|---------------------------------|--------------|--------|---------------|
+| fullName               | displayName        | Full name                       | basic        | string | null          |
+| firstName              | givenName          | First name                      | basic        | string | null          |
+| lastName               | surname            | Last name                       | basic        | string | null          |
+| title                  | jobTitle           | Job title                       | basic        | string | null          |
+| managerId              | manager.id         | Manager ID for Pureservice user | basic        | int    | null          |
+| companyId              | companyName        | Company name                    | company      | int    | null          |
+| companyDepartmentId    | department         | Company department              | company      | int    | null          |
+| companyLocationId      | officeLocation     | Company location                | company      | int    | null          |
+| emailAddressId         | mail               | Email address                   | emailaddress | int    | null          |
+| phoneNumberId          | csa.mobile         | Mobile phone number             | phonenumber  | int    | null          |
+| languageId             | preferredLanguage  | Language                        | basic        | int    | Norwegian     |
+| role                   |                    | Role (UserRole) - Sluttbruker   | basic        | int    | null          |
+| disabled               | accountEnabled     | Disabled (true/false)           | basic        | int    | false         |
+| importUniqueKey        | id                 | Unique key for import           | basic        | int    | null          |
+| username               | email              | Username                        | basic        | int    | null          |
 
-## Properties updated on students
+## Properties handled on students from `Entra ID`
 
-| Property      | Description               | Type   | Default Value | External source |
-|---------------|---------------------------|--------|---------------|-----------------|
-| `phonenumber` | Phone numbers on students | string | null          | `FINT`          |
+| Property in Pureservice | Property in Source | Description                     | Type   | Default Value |
+|-------------------------|--------------------|---------------------------------|--------|---------------|
+| fullName                | displayName        | Full name                       | string | null          |
+| firstName               | givenName          | First name                      | string | null          |
+| lastName                | surname            | Last name                       | string | null          |
+| title                   | jobTitle           | Job title                       | string | null          |
+| companyId               | companyName        | Company name                    | int    | null          |
+| companyDepartmentId     | department         | Company department              | int    | null          |
+| companyLocationId       | officeLocation     | Company location                | int    | null          |
+| emailAddressId          | mail               | Email address                   | int    | null          |
+| phoneNumberId           | csa.mobile         | Mobile phone number             | int    | null          |
+| languageId              | preferredLanguage  | Language                        | int    | Norwegian     |
+| role                    |                    | Role (UserRole) - Sluttbruker   | int    | null          |
+| disabled                | accountEnabled     | Disabled (true/false)           | bool   | false         |
+| importUniqueKey         | id                 | Unique key for import           | string | null          |
+| username?               | userPrincipalName  | Username                        | string | null          |
 
 ## Setup
 
@@ -35,14 +62,6 @@ Create a `local.settings.json` file in the `pureservice-dotnet` folder with the 
     "MicrosoftTeams_MinimumLevel": "Error",
     "Pureservice_BaseUrl": "https://instancename.pureservice.com/agent/api/",
     "Pureservice_ApiKey": "your-api-key",
-    "Feide_Name_Domain": "@domain.org",
-    "Fint_BaseUrl": "url-to-fint",
-    "Fint_Client_Id": "fint-client-id",
-    "Fint_Client_Secret": "fint-client-secret",
-    "Fint_Username": "fint-username",
-    "Fint_Password": "fint-password",
-    "Fint_Token_Url": "https://idp.felleskomponent.no/nidp/oauth/nam/token",
-    "Fint_Scope": "fint-client",
     "AZURE_CLIENT_ID": "azure-client-id",
     "AZURE_CLIENT_SECRET": "azure-client-secret",
     "AZURE_TENANT_ID": "azure-tenant-id",

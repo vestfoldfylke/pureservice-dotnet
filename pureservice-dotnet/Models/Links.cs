@@ -4,6 +4,7 @@ namespace pureservice_dotnet.Models;
 
 public class Links
 {
+    public Link? IsCopyOfLanguage { get; init; }
     public Link? Manager { get; init; }
     public Link? Company { get; init; }
     public Link? CompanyDepartment { get; init; }
@@ -12,6 +13,8 @@ public class Links
     public Link? EmailAddress { get; init; }
     [JsonPropertyName("phonenumber")]
     public Link? PhoneNumber { get; init; }
+    public LinkIds? Locations { get; init; }
+    public LinkIds? Departments { get; init; }
     public Link? Credentials { get; init; }
     public Link? MfaCredentials { get; init; }
     public Link? Language { get; init; }
