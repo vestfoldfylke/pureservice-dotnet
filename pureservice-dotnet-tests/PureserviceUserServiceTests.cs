@@ -21,12 +21,99 @@ public class PureserviceUserServiceTests
         _service = new PureserviceUserService(Substitute.For<ILogger<PureserviceUserService>>(),
             Substitute.For<IMetricsService>(), _pureserviceCaller);
     }
+
+    // CreateNewUser
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CreateNewUser_Should_Return_UserList_With_One_User(bool allProperties)
+    {
+        int? managerId = allProperties ? 1337 : null;
+        
+        var entraUser = new Microsoft.Graph.Models.User
+        {
+            GivenName = "Foo",
+            Surname = "Bar",
+            DisplayName = "Foo Bar",
+            JobTitle = allProperties ? "Elev" : "Supperådgiver",
+            Manager = allProperties ? new Microsoft.Graph.Models.User { Id = managerId.ToString() } : null,
+            AccountEnabled = allProperties,
+            Id = "69"
+        };
+
+        const int companyId = 42;
+        const int emailAddressId = 9;
+        
+        var departmentName = allProperties ? "IT" : null;
+        var locationName = allProperties ? "Oslo" : null;
+        int? physicalAddressId = allProperties ? 7 : null;
+        int? phoneNumberId = allProperties ? 8 : null;
+
+        var newPureserviceUser = new User
+        {
+            Id = 42,
+            FirstName = entraUser.GivenName,
+            MiddleName = "",
+            LastName = entraUser.Surname,
+            FullName = entraUser.DisplayName,
+            Title = entraUser.JobTitle,
+            ManagerId = managerId,
+            Disabled = !entraUser.AccountEnabled.GetValueOrDefault(allProperties),
+            CompanyId = companyId,
+            CompanyDepartmentId = null,
+            CompanyLocationId = null,
+            Department = null,
+            Location = null,
+            Links = new Links(),
+            Created = DateTime.Now,
+            CreatedById = 1
+        };
+
+        _pureserviceCaller.PostAsync<UserList>(Arg.Is("user"), Arg.Any<UserList>())
+            .Returns(new UserList([newPureserviceUser], new Linked()));
+        
+        var userList = await _service.CreateNewUser(entraUser, managerId, companyId, departmentName, locationName,
+            physicalAddressId, phoneNumberId, emailAddressId);
+        
+        Assert.NotNull(userList);
+        Assert.Single(userList.Users);
+    }
+    
+    [Fact]
+    public async Task CreateNewUser_Should_Return_UserList_With_Zero_Users()
+    {
+        var entraUser = new Microsoft.Graph.Models.User
+        {
+            GivenName = "Foo",
+            Surname = "Bar",
+            DisplayName = "Foo Bar",
+            JobTitle = "Supperådgiver",
+            AccountEnabled = true,
+            Id = "69"
+        };
+
+        const int companyId = 42;
+        const int emailAddressId = 9;
+        const string departmentName = "IT";
+        const string locationName = "Oslo";
+        
+        int? physicalAddressId = 7;
+        int? phoneNumberId = 8;
+
+        _pureserviceCaller.PostAsync<UserList>(Arg.Is("user"), Arg.Any<UserList>())
+            .Returns(new UserList([], new Linked()));
+        
+        var userList = await _service.CreateNewUser(entraUser, null, companyId, departmentName, locationName,
+            physicalAddressId, phoneNumberId, emailAddressId);
+        
+        Assert.Null(userList);
+    }
     
     // NeedsBasicUpdate
     [Theory]
     [InlineData(1337, "Ragnvald Rumpelo")]
     [InlineData(null, null)]
-    public void NeedsBasicUpdate_Should_Return_Empty_List_When_Update_Not_Need(int? managerId, string? managerFullname)
+    public void NeedsBasicUpdate_Should_Return_Empty_List_When_Update_Not_Needed(int? managerId, string? managerFullname)
     {
         var pureserviceUser = new User
         {
