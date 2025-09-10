@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using pureservice_dotnet.Models;
@@ -49,20 +50,21 @@ public class PureservicePhoneNumberService : IPureservicePhoneNumberService
         return null;
     }
 
+    [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
     public async Task<PhoneNumber?> AddNewPhoneNumberAndLinkToUser(string phoneNumber, PhoneNumberType type, int userId)
     {
-        _logger.LogInformation("Creating PhoneNumber {PhoneNumber} and linking to UserId {UserId}", phoneNumber, userId);
+        _logger.LogInformation("Creating PhoneNumber {PhoneNumber} and linking to UserId {UserId}", phoneNumber);
         var phoneNumberResult = await _pureserviceCaller.PostAsync<PhoneNumber>($"{BasePath}", new AddPhoneNumberWithUser([new NewPhoneNumberWithUser(phoneNumber, type, userId)]));
         
         if (phoneNumberResult is not null)
         {
-            _logger.LogInformation("Successfully created PhoneNumber {PhoneNumber} with PhoneNumberId {PhoneNumberId} and linked to UserId {UserId}", phoneNumber, phoneNumberResult.Id, userId);
+            _logger.LogInformation("Successfully created PhoneNumber {PhoneNumber} with PhoneNumberId {PhoneNumberId} and linked to UserId {UserId}", phoneNumber, phoneNumberResult.Id);
             _metricsService.Count($"{Constants.MetricsPrefix}_PhoneNumberCreated", "Number of phone numbers created",
                 (Constants.MetricsResultLabelName, Constants.MetricsResultSuccessLabelValue));
             return phoneNumberResult;
         }
         
-        _logger.LogError("Failed to create PhoneNumber {PhoneNumber} with link to UserId {UserId}", phoneNumber, userId);
+        _logger.LogError("Failed to create PhoneNumber {PhoneNumber} with link to UserId {UserId}", phoneNumber);
         _metricsService.Count($"{Constants.MetricsPrefix}_PhoneNumberCreated", "Number of phone numbers created",
             (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
         return null;
@@ -83,20 +85,22 @@ public class PureservicePhoneNumberService : IPureservicePhoneNumberService
         return (phoneNumber.Number != entraPhoneNumber, entraPhoneNumber);
     }
 
+    [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
     public async Task<bool> UpdatePhoneNumber(int phoneNumberId, string? phoneNumber, PhoneNumberType type, int userId)
     {
-        _logger.LogInformation("Updating PhoneNumberId {PhoneNumberId} to {PhoneNumber} for UserId {UserId}", phoneNumberId, phoneNumber, userId);
-        var phoneNumberResult = await _pureserviceCaller.PutAsync<Linked>($"{BasePath}/{phoneNumberId}", new UpdatePhoneNumber([new UpdatePhoneNumberItem(phoneNumberId, phoneNumber, type, userId)]));
+        _logger.LogInformation("Updating PhoneNumberId {PhoneNumberId} to {PhoneNumber} for UserId {UserId}", phoneNumberId, phoneNumber);
+        var phoneNumberResult = await _pureserviceCaller.PutAsync<Linked>($"{BasePath}/{phoneNumberId}", new UpdatePhoneNumber([new UpdatePhoneNumberItem(
+            phoneNumberId, phoneNumber, type, userId)]));
 
         if (phoneNumberResult is not null)
         {
-            _logger.LogInformation("Successfully updated PhoneNumberId {PhoneNumberId} to {PhoneNumber} for UserId {UserId}", phoneNumberId, phoneNumber, userId);
+            _logger.LogInformation("Successfully updated PhoneNumberId {PhoneNumberId} to {PhoneNumber} for UserId {UserId}", phoneNumberId, phoneNumber);
             _metricsService.Count($"{Constants.MetricsPrefix}_PhoneNumberUpdated", "Number of phone numbers updated",
                 (Constants.MetricsResultLabelName, Constants.MetricsResultSuccessLabelValue));
             return true;
         }
         
-        _logger.LogError("Failed to update PhoneNumberId {PhoneNumberId} to {PhoneNumber} for UserId {UserId}", phoneNumberId, phoneNumber, userId);
+        _logger.LogError("Failed to update PhoneNumberId {PhoneNumberId} to {PhoneNumber} for UserId {UserId}", phoneNumberId, phoneNumber);
         _metricsService.Count($"{Constants.MetricsPrefix}_PhoneNumberUpdated", "Number of phone numbers updated",
             (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
         return false;

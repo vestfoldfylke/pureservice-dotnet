@@ -62,7 +62,7 @@ public class PureserviceCaller : IPureserviceCaller
         
         var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
         
-        _logger.LogInformation("Sending GET request to Pureservice: {Endpoint}", endpoint);
+        _logger.LogDebug("Sending GET request to Pureservice: {Endpoint}", endpoint);
         
         var (response, responseContent, statusCode, isSuccess) = await CallPureservice(request);
 
@@ -73,7 +73,7 @@ public class PureserviceCaller : IPureserviceCaller
             var result = JsonSerializer.Deserialize<T>(responseContent, _jsonOptions)
                          ?? throw new InvalidOperationException("Deserialization returned null");
 
-            _logger.LogInformation(
+            _logger.LogDebug(
                 "GET request successful to Pureservice: {Endpoint} with return type {Type} and StatusCode {StatusCode}",
                 endpoint, typeof(T).Name, statusCode);
 
@@ -118,7 +118,7 @@ public class PureserviceCaller : IPureserviceCaller
     {
         AddAcceptHeaderIfMissing();
         
-        _logger.LogInformation("Sending PATCH request to Pureservice: {Endpoint} with return type {Type}", endpoint, typeof(T).Name);
+        _logger.LogDebug("Sending PATCH request to Pureservice: {Endpoint} with return type {Type}", endpoint, typeof(T).Name);
         
         var jsonPayload = JsonSerializer.Serialize(payload, _jsonOptions);
         var content = new StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/json");
@@ -136,7 +136,7 @@ public class PureserviceCaller : IPureserviceCaller
             var result = JsonSerializer.Deserialize<T>(responseContent, _jsonOptions)
                          ?? throw new InvalidOperationException("Deserialization returned null");
 
-            _logger.LogInformation(
+            _logger.LogDebug(
                 "PATCH request successful to Pureservice: {Endpoint} with return type {Type} and StatusCode {StatusCode}",
                 endpoint, typeof(T).Name, response.StatusCode);
 
@@ -181,7 +181,7 @@ public class PureserviceCaller : IPureserviceCaller
     {
         AddAcceptHeaderIfMissing();
         
-        _logger.LogInformation("Sending PATCH request to Pureservice: {Endpoint} without return type", endpoint);
+        _logger.LogDebug("Sending PATCH request to Pureservice: {Endpoint} without return type", endpoint);
         
         var jsonPayload = JsonSerializer.Serialize(payload, _jsonOptions);
         var content = new StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/json");
@@ -196,7 +196,7 @@ public class PureserviceCaller : IPureserviceCaller
         {
             response.EnsureSuccessStatusCode();
 
-            _logger.LogInformation(
+            _logger.LogDebug(
                 "PATCH request successful to Pureservice: {Endpoint} without return type and StatusCode {StatusCode}",
                 endpoint, statusCode);
 
@@ -241,7 +241,7 @@ public class PureserviceCaller : IPureserviceCaller
     {
         RemoveAcceptHeaderIfExists();
         
-        _logger.LogInformation("Sending POST request to Pureservice: {Endpoint} with return type {Type}", endpoint, typeof(T).Name);
+        _logger.LogDebug("Sending POST request to Pureservice: {Endpoint} with return type {Type}", endpoint, typeof(T).Name);
         
         var jsonPayload = JsonSerializer.Serialize(payload, _jsonOptions);
         var content = new StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/vnd.api+json");
@@ -259,7 +259,7 @@ public class PureserviceCaller : IPureserviceCaller
             var result = JsonSerializer.Deserialize<T>(responseContent, _jsonOptions)
                          ?? throw new InvalidOperationException("Deserialization returned null");
 
-            _logger.LogInformation(
+            _logger.LogDebug(
                 "POST request successful to Pureservice: {Endpoint} with return type {Type} and StatusCode {StatusCode}",
                 endpoint, typeof(T).Name, statusCode);
 
@@ -304,7 +304,7 @@ public class PureserviceCaller : IPureserviceCaller
     {
         RemoveAcceptHeaderIfExists();
         
-        _logger.LogInformation("Sending PUT request to Pureservice: {Endpoint} with return type {Type}", endpoint, typeof(T).Name);
+        _logger.LogDebug("Sending PUT request to Pureservice: {Endpoint} with return type {Type}", endpoint, typeof(T).Name);
         
         var jsonPayload = JsonSerializer.Serialize(payload, _jsonOptions);
         var content = new StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/vnd.api+json");
@@ -322,7 +322,7 @@ public class PureserviceCaller : IPureserviceCaller
             var result = JsonSerializer.Deserialize<T>(responseContent, _jsonOptions)
                          ?? throw new InvalidOperationException("Deserialization returned null");
 
-            _logger.LogInformation(
+            _logger.LogDebug(
                 "PUT request successful to Pureservice: {Endpoint} with return type {Type} and StatusCode {StatusCode}",
                 endpoint, typeof(T).Name, statusCode);
 
@@ -367,7 +367,7 @@ public class PureserviceCaller : IPureserviceCaller
     {
         RemoveAcceptHeaderIfExists();
         
-        _logger.LogInformation("Sending PUT request to Pureservice: {Endpoint} without return type", endpoint);
+        _logger.LogDebug("Sending PUT request to Pureservice: {Endpoint} without return type", endpoint);
         
         var jsonPayload = JsonSerializer.Serialize(payload, _jsonOptions);
         var content = new StringContent(jsonPayload, System.Text.Encoding.UTF8, "application/vnd.api+json");
@@ -382,7 +382,7 @@ public class PureserviceCaller : IPureserviceCaller
         {
             response.EnsureSuccessStatusCode();
 
-            _logger.LogInformation(
+            _logger.LogDebug(
                 "PUT request successful to Pureservice: {Endpoint} without return type and StatusCode {StatusCode}",
                 endpoint, statusCode);
 

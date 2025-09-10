@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
@@ -13,6 +14,7 @@ using Microsoft.OpenApi.Models;
 using pureservice_dotnet.Models;
 using pureservice_dotnet.Models.Enums;
 using pureservice_dotnet.Services;
+using Serilog.Context;
 using Vestfold.Extensions.Metrics.Services;
 
 namespace pureservice_dotnet.Functions;
@@ -27,10 +29,8 @@ public class UserFunctions
     private readonly IPureservicePhysicalAddressService _pureservicePhysicalAddressService;
     private readonly IPureserviceUserService _pureserviceUserService;
 
-    public UserFunctions(IGraphService graphService, ILogger<UserFunctions> logger,
-        IMetricsService metricsService, IPureserviceEmailAddressService pureserviceEmailAddressService,
-        IPureservicePhoneNumberService pureservicePhoneNumberService,
-        IPureservicePhysicalAddressService pureservicePhysicalAddressService, IPureserviceUserService pureserviceUserService)
+    public UserFunctions(IGraphService graphService, ILogger<UserFunctions> logger, IMetricsService metricsService, IPureserviceEmailAddressService pureserviceEmailAddressService,
+        IPureservicePhoneNumberService pureservicePhoneNumberService, IPureservicePhysicalAddressService pureservicePhysicalAddressService, IPureserviceUserService pureserviceUserService)
     {
         _graphService = graphService;
         _logger = logger;
@@ -43,17 +43,12 @@ public class UserFunctions
 
     [Function("Synchronize")]
     [OpenApiOperation(operationId: "Synchronize")]
-    [OpenApiSecurity("Authentication", SecuritySchemeType.ApiKey, Name = "X-Functions-Key",
-        In = OpenApiSecurityLocationType.Header)]
+    [OpenApiSecurity("Authentication", SecuritySchemeType.ApiKey, Name = "X-Functions-Key", In = OpenApiSecurityLocationType.Header)]
     [OpenApiResponseWithBody(HttpStatusCode.OK, "application/json", typeof(SynchronizationResult), Description = "Trigger finished")]
-    [OpenApiResponseWithBody(HttpStatusCode.BadRequest, "text/plain", typeof(string),
-        Description = "Trigger failed")]
-    [OpenApiResponseWithBody(HttpStatusCode.InternalServerError, "text/plain", typeof(string),
-        Description = "Error occured")]
-    public async Task<IActionResult> Synchronize([HttpTrigger(
-        AuthorizationLevel.Function,
-        "post",
-        Route = "User/Synchronize")] HttpRequest req)
+    [OpenApiResponseWithBody(HttpStatusCode.BadRequest, "text/plain", typeof(string), Description = "Trigger failed")]
+    [OpenApiResponseWithBody(HttpStatusCode.InternalServerError, "text/plain", typeof(string), Description = "Error occured")]
+    [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
+    public async Task<IActionResult> Synchronize([HttpTrigger(AuthorizationLevel.Function, "post", Route = "User/Synchronize")] HttpRequest req)
     {
         _logger.LogInformation("C# HTTP trigger function processed a request.");
         _metricsService.Count("UserFunctions_Synchronize");
@@ -67,9 +62,8 @@ public class UserFunctions
         
         var pureserviceUsers = await _pureserviceUserService.GetUsers(["company", "company.departments", "company.locations", "emailaddress", "language", "phonenumbers"]);
 
-        if (pureserviceUsers.Linked?.Companies is null || pureserviceUsers.Linked?.CompanyDepartments is null ||
-            pureserviceUsers.Linked?.CompanyLocations is null || pureserviceUsers.Linked?.EmailAddresses is null ||
-            pureserviceUsers.Linked?.Languages is null || pureserviceUsers.Linked?.PhoneNumbers is null)
+        if (pureserviceUsers.Linked?.Companies is null || pureserviceUsers.Linked?.CompanyDepartments is null || pureserviceUsers.Linked?.CompanyLocations is null ||
+            pureserviceUsers.Linked?.EmailAddresses is null || pureserviceUsers.Linked?.Languages is null || pureserviceUsers.Linked?.PhoneNumbers is null)
         {
             _logger.LogError("Expected linked results were not found in user list");
             return new BadRequestObjectResult("Expected linked results were not found in user list");
@@ -84,70 +78,54 @@ public class UserFunctions
         // create or update users
         foreach (var entraUser in entraUsers)
         {
-            _logger.LogInformation("Processing Entra user '{DisplayName}' with Id {Id}", entraUser.DisplayName, entraUser.Id);
+            using (GlobalLogContext.PushProperty("EntraId", entraUser.Id))
+            {
+                _logger.LogInformation("Processing Entra user '{DisplayName}' with Id {EntraId}", entraUser.DisplayName);
 
-            if (entraUser.Mail is null)
-            {
-                _logger.LogError("Entra user with Id {Id} has no email address. Skipping", entraUser.Id);
-                synchronizationResult.UserMissingEmailAddressCount++;
-                continue;
-            }
-            
-            var pureserviceUser = pureserviceUsers.Users.Find(u => !string.IsNullOrEmpty(u.ImportUniqueKey) && u.ImportUniqueKey == entraUser.Id);
-            
-            var pureserviceManagerUser = entraUser.Manager?.Id is not null
-                ? pureserviceUsers.Users.Find(u => !string.IsNullOrEmpty(u.ImportUniqueKey) && u.ImportUniqueKey == entraUser.Manager.Id)
-                : null;
-            
-            if (pureserviceUser is null)
-            {
-                var company = entraUser.CompanyName is not null
-                    ? companies.Find(c => c.Name.Equals(entraUser.CompanyName, StringComparison.OrdinalIgnoreCase))
-                    : null;
-                if (company is null)
+                var (pureserviceUser, pureserviceManagerUser) = GetPureserviceUserInfo(entraUser, pureserviceUsers, synchronizationResult);
+
+                if (pureserviceUser is null)
                 {
-                    // TODO: Company needs to be created?
-                    _logger.LogError("Company {CompanyName} for new user with Entra Id {EntraId} not found in Pureservice. User will not be created",
-                        entraUser.CompanyName, entraUser.Id);
-                    synchronizationResult.UserErrorCount++;
+                    if (entraUser.AccountEnabled.HasValue && !entraUser.AccountEnabled.Value)
+                    {
+                        _logger.LogInformation("Entra user with Id {EntraId} is disabled in Entra. Skipping creation in Pureservice");
+                        synchronizationResult.UserDisabledCount++;
+                        continue;
+                    }
+
+                    var company = companies.Find(c => c.Name.Equals(entraUser.CompanyName, StringComparison.OrdinalIgnoreCase));
+                    if (company is null)
+                    {
+                        // TODO: Company needs to be created?
+                        _logger.LogError("Company {CompanyName} for new pureservice user with Entra Id {EntraId} not found in Pureservice. User will not be created", entraUser.CompanyName);
+                        synchronizationResult.UserErrorCount++;
+                        continue;
+                    }
+
+                    var department = entraUser.Department is not null
+                        ? departments.Find(d => d.Name.Equals(entraUser.Department, StringComparison.OrdinalIgnoreCase) && d.CompanyId == company.Id)
+                        : null;
+
+                    var location = entraUser.OfficeLocation is not null
+                        ? locations.Find(l => l.Name.Equals(entraUser.OfficeLocation, StringComparison.OrdinalIgnoreCase) && l.CompanyId == company.Id)
+                        : null;
+
+                    await CreateUser(entraUser, pureserviceManagerUser, company.Id, department, location, synchronizationResult);
                     continue;
                 }
                 
-                var department = entraUser.Department is not null
-                    ? departments.Find(d => d.Name.Equals(entraUser.Department, StringComparison.OrdinalIgnoreCase) && d.CompanyId == company.Id)
-                    : null;
-                
-                var location = entraUser.OfficeLocation is not null
-                    ? locations.Find(l => l.Name.Equals(entraUser.OfficeLocation, StringComparison.OrdinalIgnoreCase) && l.CompanyId == company.Id)
-                    : null;
-                
-                await CreateUser(entraUser, pureserviceManagerUser, company.Id, department, location, synchronizationResult);
-                continue;
+                using (GlobalLogContext.PushProperty("UserId", pureserviceUser.Id))
+                {
+                    var (primaryEmailAddress, primaryPhoneNumber) = GetPureserviceUserContactInfo(pureserviceUser, pureserviceUsers, synchronizationResult);
+                    if (primaryEmailAddress is null)
+                    {
+                        continue;
+                    }
+
+                    synchronizationResult.UserCount++;
+                    await UpdateUser(pureserviceUser, entraUser, primaryEmailAddress, primaryPhoneNumber, pureserviceManagerUser, companies, departments, locations, synchronizationResult);
+                }
             }
-
-            if (pureserviceUser.Links.EmailAddress is null)
-            {
-                _logger.LogError("UserId {UserId} has no email address. Skipping", pureserviceUser.Id);
-                synchronizationResult.UserMissingEmailAddressCount++;
-                continue;
-            }
-
-            var primaryEmailAddress =
-                pureserviceUsers.Linked.EmailAddresses.Find(e => e.Id == pureserviceUser.Links.EmailAddress.Id);
-
-            if (primaryEmailAddress is null)
-            {
-                _logger.LogError("EmailAddressId {EmailAddressId} for UserId {UserId} not found in Pureservice. Skipping", pureserviceUser.Links.EmailAddress.Id, pureserviceUser.Id);
-                synchronizationResult.UserMissingEmailAddressCount++;
-                continue;
-            }
-            
-            var primaryPhoneNumber = pureserviceUser.Links.PhoneNumber is not null
-                ? pureserviceUsers.Linked.PhoneNumbers.Find(p => p.Id == pureserviceUser.Links.PhoneNumber.Id)
-                : null;
-
-            synchronizationResult.UserCount++;
-            await UpdateUser(pureserviceUser, entraUser, primaryEmailAddress, primaryPhoneNumber, pureserviceManagerUser, companies, departments, locations, synchronizationResult);
         }
         
         // TODO: Loop through pureservice users not existing in entra and disable them?
@@ -155,37 +133,92 @@ public class UserFunctions
         return new JsonResult(synchronizationResult);
     }
 
-    private async Task CreateUser(Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser,
-        int companyId, CompanyDepartment? department, CompanyLocation? location, SynchronizationResult synchronizationResult)
+    [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
+    private (User? pureserviceUser, User? pureserviceManagerUser) GetPureserviceUserInfo(Microsoft.Graph.Models.User entraUser, UserList pureserviceUsers, SynchronizationResult synchronizationResult)
     {
-        _logger.LogWarning("User with Id {UserId} not found in Pureservice by ImportUniqueKey. User will be created", entraUser.Id);
+        if (entraUser.Mail is null)
+        {
+            _logger.LogError("Entra user with Id {EntraId} has no email address. Skipping");
+            synchronizationResult.UserMissingEmailAddressCount++;
+            return (null, null);
+        }
+
+        if (entraUser.CompanyName is null)
+        {
+            _logger.LogError("Entra user with Id {EntraId} has no company name. Skipping");
+            synchronizationResult.UserMissingCompanyNameCount++;
+            return (null, null);
+        }
+            
+        var pureserviceUser = pureserviceUsers.Users.Find(u => !string.IsNullOrEmpty(u.ImportUniqueKey) && u.ImportUniqueKey == entraUser.Id);
+            
+        var pureserviceManagerUser = entraUser.Manager?.Id is not null
+            ? pureserviceUsers.Users.Find(u => !string.IsNullOrEmpty(u.ImportUniqueKey) && u.ImportUniqueKey == entraUser.Manager.Id)
+            : null;
+        
+        return (pureserviceUser, pureserviceManagerUser);
+    }
+
+    [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
+    private (EmailAddress? primaryEmailAddress, PhoneNumber? primaryPhoneNumber) GetPureserviceUserContactInfo(User pureserviceUser, UserList pureserviceUsers, SynchronizationResult synchronizationResult)
+    {
+        if (pureserviceUser.Links is null)
+        {
+            _logger.LogError("UserId {UserId} has no links. Skipping");
+            synchronizationResult.UserErrorCount++;
+            return (null, null);
+        }
+
+        if (pureserviceUser.Links.EmailAddress is null)
+        {
+            _logger.LogError("UserId {UserId} has no email address. Skipping");
+            synchronizationResult.UserMissingEmailAddressCount++;
+            return (null, null);
+        }
+
+        var primaryEmailAddress = pureserviceUsers.Linked!.EmailAddresses!.Find(e => e.Id == pureserviceUser.Links.EmailAddress.Id);
+
+        if (primaryEmailAddress is null)
+        {
+            _logger.LogError("EmailAddressId {EmailAddressId} for UserId {UserId} not found in Pureservice. Skipping", pureserviceUser.Links.EmailAddress.Id);
+            synchronizationResult.UserMissingEmailAddressCount++;
+            return (null, null);
+        }
+            
+        var primaryPhoneNumber = pureserviceUser.Links.PhoneNumber is not null
+            ? pureserviceUsers.Linked!.PhoneNumbers!.Find(p => p.Id == pureserviceUser.Links.PhoneNumber.Id)
+            : null;
+        
+        return (primaryEmailAddress, primaryPhoneNumber);
+    }
+
+    [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
+    private async Task CreateUser(Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser, int companyId, CompanyDepartment? department, CompanyLocation? location,
+        SynchronizationResult synchronizationResult)
+    {
+        _logger.LogWarning("Entra user with Id {EntraId} not found in Pureservice by ImportUniqueKey. User will be created");
         
         if (entraUser.Manager?.Id is not null && pureserviceManagerUser is null)
         {
-            _logger.LogError("Manager with Entra Id {EntraManagerId} for new user with Entra Id {EntraId} not found in Pureservice. Manager user must be created first.",
-                entraUser.Manager.Id, entraUser.Id);
+            _logger.LogError("Manager with Entra Id {EntraManagerId} for new pureservice user with Entra Id {EntraId} not found in Pureservice. Manager user must be created first.", entraUser.Manager.Id);
             synchronizationResult.UserErrorCount++;
             return;
         }
         
         // NOTE: Create new physical address (with empty fields since we don't need that info in Pureservice for now)
-        var physicalAddressResult =
-            await _pureservicePhysicalAddressService.AddNewPhysicalAddress(null, null, null, "Norway");
+        var physicalAddressResult = await _pureservicePhysicalAddressService.AddNewPhysicalAddress(null, null, null, "Norway");
         if (physicalAddressResult is null)
         {
-            _logger.LogError("Failed to create physical address for new user with Entra Id {EntraId}. User will not be created",
-                entraUser.Id);
+            _logger.LogError("Failed to create physical address for new pureservice user with Entra Id {EntraId}. User will not be created");
             synchronizationResult.UserErrorCount++;
             return;
         }
                 
         var entraPhoneNumber = _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile");
-        var pureservicePhoneNumber =
-            await _pureservicePhoneNumberService.AddNewPhoneNumber(entraPhoneNumber ?? "", PhoneNumberType.Mobile);
+        var pureservicePhoneNumber = await _pureservicePhoneNumberService.AddNewPhoneNumber(entraPhoneNumber ?? "", PhoneNumberType.Mobile);
         if (pureservicePhoneNumber is null)
         {
-            _logger.LogError("Failed to create phone number for new user with Entra Id {EntraId} and phone number {PhoneNumber}. User will not be created",
-                entraUser.Id, entraPhoneNumber);
+            _logger.LogError("Failed to create phone number for new pureservice user with Entra Id {EntraId} and phone number {PhoneNumber}. User will not be created", entraUser.Id, entraPhoneNumber);
             synchronizationResult.UserErrorCount++;
             return;
         }
@@ -194,17 +227,13 @@ public class UserFunctions
         var pureserviceEmailAddress = await _pureserviceEmailAddressService.AddNewEmailAddress(entraUser.UserPrincipalName!);
         if (pureserviceEmailAddress is null)
         {
-            _logger.LogError("Failed to create email address for new user with Entra Id {EntraId} and email {Email}. User will not be created",
-                entraUser.Id, entraUser.Mail);
+            _logger.LogError("Failed to create email address for new pureservice user with Entra Id {EntraId} and Email {Email}. User will not be created", entraUser.Id, entraUser.Mail);
             synchronizationResult.UserErrorCount++;
             return;
         }
 
-        // NOTE: Create new user with ids for above created entities (include required fields to get needed info)
-        var pureserviceUserList = await _pureserviceUserService.CreateNewUser(entraUser, pureserviceManagerUser?.Id,
-            companyId, physicalAddressResult.Id, pureservicePhoneNumber.Id, pureserviceEmailAddress.Id);
-        
-        var pureserviceUser = pureserviceUserList?.Users.FirstOrDefault();
+        // NOTE: Create new user with ids for above created entities
+        var pureserviceUser = await _pureserviceUserService.CreateNewUser(entraUser, pureserviceManagerUser?.Id, companyId, physicalAddressResult.Id, pureservicePhoneNumber.Id, pureserviceEmailAddress.Id);
 
         if (pureserviceUser is null)
         {
@@ -213,21 +242,18 @@ public class UserFunctions
         }
 
         // NOTE: Update department and location
-        if (department is not null && location is not null &&
-            await _pureserviceUserService.UpdateDepartmentAndLocation(pureserviceUser.Id, department.Id, location.Id))
+        // TODO: Check department and location separately and update only if needed
+        if (department is not null && location is not null && await _pureserviceUserService.UpdateDepartmentAndLocation(pureserviceUser.Id, department.Id, location.Id))
         {
             synchronizationResult.UserCreatedCount++;
         }
-        
-        // TODO: Should new pureservice user be added to pureserviceUsers list? Probably not
     }
     
-    private async Task UpdateUser(User pureserviceUser, Microsoft.Graph.Models.User entraUser, EmailAddress emailAddress,
-        PhoneNumber? phoneNumber, User? pureserviceManagerUser, List<Company> companies, List<CompanyDepartment> companyDepartments,
-        List<CompanyLocation> companyLocations, SynchronizationResult synchronizationResult)
+    [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
+    private async Task UpdateUser(User pureserviceUser, Microsoft.Graph.Models.User entraUser, EmailAddress emailAddress, PhoneNumber? phoneNumber, User? pureserviceManagerUser,
+        List<Company> companies, List<CompanyDepartment> companyDepartments, List<CompanyLocation> companyLocations, SynchronizationResult synchronizationResult)
     {
-        var basicPropertiesToUpdate = _pureserviceUserService.NeedsBasicUpdate(
-            pureserviceUser, entraUser, pureserviceManagerUser);
+        var basicPropertiesToUpdate = _pureserviceUserService.NeedsBasicUpdate(pureserviceUser, entraUser, pureserviceManagerUser);
         
         var companyPropertiesToUpdate = _pureserviceUserService.NeedsCompanyUpdate(pureserviceUser, entraUser, companies, companyDepartments, companyLocations);
         
@@ -236,11 +262,10 @@ public class UserFunctions
         var entraPhoneNumber = _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile");
         var phoneNumberUpdate = _pureservicePhoneNumberService.NeedsPhoneNumberUpdate(phoneNumber, entraPhoneNumber);
         
-        if (basicPropertiesToUpdate.Count == 0 && companyPropertiesToUpdate.Count == 0 && !updateEmail &&
-            !phoneNumberUpdate.Update)
+        if (basicPropertiesToUpdate.Count == 0 && companyPropertiesToUpdate.Count == 0 && !updateEmail && !phoneNumberUpdate.Update)
         {
             synchronizationResult.UserUpToDateCount++;
-            _logger.LogInformation("User with UserId {UserId} is up to date", pureserviceUser.Id);
+            _logger.LogInformation("User with UserId {UserId} is up to date");
             return;
         }
         
@@ -271,17 +296,14 @@ public class UserFunctions
                 return;
             }
 
-            var phoneNumberResult =
-                await _pureservicePhoneNumberService.AddNewPhoneNumberAndLinkToUser(
-                    phoneNumberUpdate.PhoneNumber, PhoneNumberType.Mobile, pureserviceUser.Id);
+            var phoneNumberResult = await _pureservicePhoneNumberService.AddNewPhoneNumberAndLinkToUser(phoneNumberUpdate.PhoneNumber, PhoneNumberType.Mobile, pureserviceUser.Id);
             if (phoneNumberResult is null)
             {
                 synchronizationResult.UserErrorCount++;
                 return;
             }
             
-            if (await _pureserviceUserService.RegisterPhoneNumberAsDefault(pureserviceUser.Id,
-                    phoneNumberResult.Id))
+            if (await _pureserviceUserService.RegisterPhoneNumberAsDefault(pureserviceUser.Id, phoneNumberResult.Id))
             {
                 synchronizationResult.UserPhoneNumberUpdatedCount++;
                 return;
@@ -291,8 +313,7 @@ public class UserFunctions
             return;
         }
         
-        if (await _pureservicePhoneNumberService.UpdatePhoneNumber(phoneNumber.Id, phoneNumberUpdate.PhoneNumber,
-            PhoneNumberType.Mobile, pureserviceUser.Id))
+        if (await _pureservicePhoneNumberService.UpdatePhoneNumber(phoneNumber.Id, phoneNumberUpdate.PhoneNumber, PhoneNumberType.Mobile, pureserviceUser.Id))
         {
             synchronizationResult.UserPhoneNumberUpdatedCount++;
             return;

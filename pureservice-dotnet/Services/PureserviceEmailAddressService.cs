@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using pureservice_dotnet.Models;
@@ -46,20 +47,21 @@ public class PureserviceEmailAddressService : IPureserviceEmailAddressService
         return null;
     }
 
+    [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
     public async Task<bool> UpdateEmailAddress(int emailAddressId, string emailAddress, int userId)
     {
-        _logger.LogInformation("Updating EmailAddressId {EmailAddressId} to {EmailAddress} for UserId {UserId}", emailAddressId, emailAddress, userId);
+        _logger.LogInformation("Updating EmailAddressId {EmailAddressId} to {EmailAddress} for UserId {UserId}", emailAddressId, emailAddress);
         var result = await _pureserviceCaller.PutAsync($"{BasePath}/{emailAddressId}", new UpdateEmailAddress([new UpdateEmailAddressItem(emailAddressId, emailAddress, userId)]));
 
         if (result)
         {
-            _logger.LogInformation("Successfully updated EmailAddressId {EmailAddressId} to {EmailAddress} for UserId {UserId}", emailAddressId, emailAddress, userId);
+            _logger.LogInformation("Successfully updated EmailAddressId {EmailAddressId} to {EmailAddress} for UserId {UserId}", emailAddressId, emailAddress);
             _metricsService.Count($"{Constants.MetricsPrefix}_EmailAddressUpdated", "Number of email addresses updated",
                 (Constants.MetricsResultLabelName, Constants.MetricsResultSuccessLabelValue));
             return true;
         }
         
-        _logger.LogError("Failed to update PhoneNumberId {PhoneNumberId} to {PhoneNumber} for UserId {UserId}", emailAddressId, emailAddress, userId);
+        _logger.LogError("Failed to update PhoneNumberId {PhoneNumberId} to {PhoneNumber} for UserId {UserId}", emailAddressId, emailAddress);
         _metricsService.Count($"{Constants.MetricsPrefix}_EmailAddressUpdated", "Number of email addresses updated",
             (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
         return false;
