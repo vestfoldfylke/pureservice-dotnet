@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace pureservice_dotnet.Models;
@@ -14,6 +15,8 @@ public class Company
     [JsonPropertyName("phonenumberId")]
     public int? PhoneNumberId { get; init; }
     public int? EmailAddressId { get; init; }
+    public List<CompanyDepartment>? Departments { get; init; }
+    public List<CompanyLocation>? Locations { get; init; }
     public bool Disabled { get; init; }
     public int? UsersCount { get; init; }
     public int Id { get; init; }

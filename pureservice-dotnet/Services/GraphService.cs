@@ -25,23 +25,27 @@ public class GraphService : IGraphService
     
     private readonly string[] _userProperties =
     [
-        "id",
         "displayName",
-        "userPrincipalName",
+        "givenName",
+        "surname",
+        "jobTitle",
+        "companyName",
+        "department",
+        "officeLocation",
         "mail",
-        "mobilePhone",
+        "customSecurityAttributes",
+        "preferredLanguage",
         "accountEnabled",
-        "customSecurityAttributes"
+        "id",
+        "userPrincipalName"
     ];
     
     public GraphService(IAuthenticationService authenticationService, IConfiguration configuration)
     {
         _graphClient = authenticationService.CreateGraphClient();
         
-        _employeeUserDomain = configuration["Employee_Email_Domain"] ??
-            throw new InvalidOperationException("Employee_Email_Domain not configured");
-        _studentUserDomain = configuration["Student_Email_Domain"] ??
-            throw new InvalidOperationException("Student_Email_Domain not configured");
+        _employeeUserDomain = configuration["Employee_Email_Domain"] ?? throw new InvalidOperationException("Employee_Email_Domain not configured");
+        _studentUserDomain = configuration["Student_Email_Domain"] ?? throw new InvalidOperationException("Student_Email_Domain not configured");
     }
 
     public async Task<List<User>> GetEmployees()

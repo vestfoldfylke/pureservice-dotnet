@@ -15,7 +15,8 @@ public class User
     public string? Notes { get; init; }
     public bool IsAnonymized { get; init; }
     public bool IsSuperuser { get; init; }
-    public required Links Links { get; init; }
+    public Links? Links { get; init; }
+    public Company? Company { get; init; }
     public int? ManagerId { get; init; }
     public int? CompanyId { get; init; }
     public int? CompanyDepartmentId { get; init; }

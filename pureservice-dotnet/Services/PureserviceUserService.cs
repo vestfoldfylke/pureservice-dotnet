@@ -13,7 +13,7 @@ namespace pureservice_dotnet.Services;
 
 public interface IPureserviceUserService
 {
-    Task<UserList?> CreateNewUser(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId,
+    Task<User?> CreateNewUser(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId,
         int physicalAddressId, int phoneNumberId, int emailAddressId);
     Task<UserList> GetUser(string filter, string[]? entities = null);
     Task<UserList> GetUser(int userId, string[]? entities = null);
@@ -47,7 +47,7 @@ public class PureserviceUserService : IPureserviceUserService
         _pureserviceCaller = pureserviceCaller;
     }
 
-    public async Task<UserList?> CreateNewUser(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId,
+    public async Task<User?> CreateNewUser(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId,
         int physicalAddressId, int phoneNumberId, int emailAddressId)
     {
         var payload = new
@@ -85,28 +85,17 @@ public class PureserviceUserService : IPureserviceUserService
         };
         
         _logger.LogInformation("Creating new pureservice user with ImportUniqueKey {ImportUniqueKey}", entraUser.Id);
-        var result = await _pureserviceCaller.PostAsync<UserList>($"{BasePath}?include=company,company.departments,company.locations,emailaddress,language,phonenumbers", payload);
+        var result = await _pureserviceCaller.PostAsync<User>($"{BasePath}?include=company,company.departments,company.locations,emailaddress,language,phonenumbers", payload);
 
         if (result is not null)
         {
-            var pureserviceUser = result.Users.FirstOrDefault();
-            if (pureserviceUser is not null)
-            {
-                _logger.LogInformation(
-                    "Successfully created new pureservice user with ImportUniqueKey {ImportUniqueKey} and UserId {UserId}",
-                    pureserviceUser.ImportUniqueKey, pureserviceUser.Id);
-                _metricsService.Count($"{Constants.MetricsPrefix}_CreatedNewUser", "Number of users created",
-                    (Constants.MetricsResultLabelName, Constants.MetricsResultSuccessLabelValue));
-                return result;
-            }
-            
-            _logger.LogError("Failed to create new pureservice user with ImportUniqueKey {ImportUniqueKey}: No user returned in result", entraUser.Id);
-            return null;
+            _logger.LogInformation("Successfully created new pureservice user with ImportUniqueKey {ImportUniqueKey} and UserId {UserId}", result.ImportUniqueKey, result.Id);
+            _metricsService.Count($"{Constants.MetricsPrefix}_CreatedNewUser", "Number of users created", (Constants.MetricsResultLabelName, Constants.MetricsResultSuccessLabelValue));
+            return result;
         }
         
         _logger.LogError("Failed to create new pureservice user with ImportUniqueKey {ImportUniqueKey}", entraUser.Id);
-        _metricsService.Count($"{Constants.MetricsPrefix}_CreatedNewUser", "Number of users created",
-            (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
+        _metricsService.Count($"{Constants.MetricsPrefix}_CreatedNewUser", "Number of users created", (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
         return null;
     }
 
