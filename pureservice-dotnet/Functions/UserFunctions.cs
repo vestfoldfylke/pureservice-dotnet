@@ -190,7 +190,8 @@ public class UserFunctions
             return;
         }
 
-        var pureserviceEmailAddress = await _pureserviceEmailAddressService.AddNewEmailAddress(entraUser.Mail!);
+        // NOTE: We create the user with UserPrincipalName as email address so SSO will work. If Mail actually is different, it will be updated at next sweep.
+        var pureserviceEmailAddress = await _pureserviceEmailAddressService.AddNewEmailAddress(entraUser.UserPrincipalName!);
         if (pureserviceEmailAddress is null)
         {
             _logger.LogError("Failed to create email address for new user with Entra Id {EntraId} and email {Email}. User will not be created",

@@ -20,26 +20,26 @@ Synchronization service to add / update / disable / enable user objects in Pures
 | role                   |                    | Role (UserRole) - Sluttbruker   | basic        | int    | null          |
 | disabled               | accountEnabled     | Disabled (true/false)           | basic        | int    | false         |
 | importUniqueKey        | id                 | Unique key for import           | basic        | int    | null          |
-| username               | email              | Username                        | basic        | int    | null          |
+| username               | userPrincipalName  | Username                        | basic        | int    | null          |
 
 ## Properties handled on students from `Entra ID`
 
-| Property in Pureservice | Property in Source | Description                     | Type   | Default Value |
-|-------------------------|--------------------|---------------------------------|--------|---------------|
-| fullName                | displayName        | Full name                       | string | null          |
-| firstName               | givenName          | First name                      | string | null          |
-| lastName                | surname            | Last name                       | string | null          |
-| title                   | jobTitle           | Job title                       | string | null          |
-| companyId               | companyName        | Company name                    | int    | null          |
-| companyDepartmentId     | department         | Company department              | int    | null          |
-| companyLocationId       | officeLocation     | Company location                | int    | null          |
-| emailAddressId          | mail               | Email address                   | int    | null          |
-| phoneNumberId           | csa.mobile         | Mobile phone number             | int    | null          |
-| languageId              | preferredLanguage  | Language                        | int    | Norwegian     |
-| role                    |                    | Role (UserRole) - Sluttbruker   | int    | null          |
-| disabled                | accountEnabled     | Disabled (true/false)           | bool   | false         |
-| importUniqueKey         | id                 | Unique key for import           | string | null          |
-| username?               | userPrincipalName  | Username                        | string | null          |
+| Property in Pureservice | Property in Source | Description                    | Category     | Type   | Default Value |
+|------------------------|--------------------|---------------------------------|--------------|--------|---------------|
+| fullName               | displayName        | Full name                       | basic        | string | null          |
+| firstName              | givenName          | First name                      | basic        | string | null          |
+| lastName               | surname            | Last name                       | basic        | string | null          |
+| title                  | jobTitle           | Job title                       | basic        | string | null          |
+| companyId              | companyName        | Company name                    | company      | int    | null          |
+| companyDepartmentId    | department         | Company department              | company      | int    | null          |
+| companyLocationId      | officeLocation     | Company location                | company      | int    | null          |
+| emailAddressId         | mail               | Email address                   | emailaddress | int    | null          |
+| phoneNumberId          | csa.mobile         | Mobile phone number             | phonenumber  | int    | null          |
+| languageId             | preferredLanguage  | Language                        | basic        | int    | Norwegian     |
+| role                   |                    | Role (UserRole) - Sluttbruker   | basic        | int    | null          |
+| disabled               | accountEnabled     | Disabled (true/false)           | basic        | int    | false         |
+| importUniqueKey        | id                 | Unique key for import           | basic        | int    | null          |
+| username               | userPrincipalName  | Username                        | basic        | int    | null          |
 
 ## Setup
 
@@ -65,6 +65,7 @@ Create a `local.settings.json` file in the `pureservice-dotnet` folder with the 
     "AZURE_CLIENT_ID": "azure-client-id",
     "AZURE_CLIENT_SECRET": "azure-client-secret",
     "AZURE_TENANT_ID": "azure-tenant-id",
+    "Employee_Email_Domain": "@yourorg.edu",
     "Student_Email_Domain": "@yourschool.edu"
   }
 }
