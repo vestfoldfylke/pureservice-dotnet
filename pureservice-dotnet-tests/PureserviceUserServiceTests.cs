@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
+using NSubstitute.ReturnsExtensions;
 using pureservice_dotnet.Models;
 using pureservice_dotnet.Services;
 using Vestfold.Extensions.Metrics.Services;
@@ -26,7 +27,7 @@ public class PureserviceUserServiceTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public async Task CreateNewUser_Should_Return_UserList_With_One_User(bool allProperties)
+    public async Task CreateNewUser_Should_Return_New_User(bool allProperties)
     {
         int? managerId = allProperties ? 1337 : null;
         
@@ -56,27 +57,35 @@ public class PureserviceUserServiceTests
             Title = entraUser.JobTitle,
             ManagerId = managerId,
             Disabled = !entraUser.AccountEnabled.GetValueOrDefault(allProperties),
+            Company = new Company
+            {
+                Name = "",
+                Created = DateTime.Now,
+                Id = companyId,
+                CreatedById = 1,
+                Departments = [],
+                Disabled = false,
+                Locations = []
+            },
             CompanyId = companyId,
             CompanyDepartmentId = null,
             CompanyLocationId = null,
             Department = null,
             Location = null,
-            Links = new Links(),
             Created = DateTime.Now,
             CreatedById = 1
         };
 
-        _pureserviceCaller.PostAsync<UserList>(Arg.Is<string>(s => s.StartsWith("user")), Arg.Any<object>())
-            .Returns(new UserList([newPureserviceUser], new Linked()));
+        _pureserviceCaller.PostAsync<User>(Arg.Is<string>(s => s.StartsWith("user")), Arg.Any<object>())
+            .Returns(newPureserviceUser);
         
         var userList = await _service.CreateNewUser(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId);
         
         Assert.NotNull(userList);
-        Assert.Single(userList.Users);
     }
     
     [Fact]
-    public async Task CreateNewUser_Should_Return_Null_When_UserList_Is_Empty()
+    public async Task CreateNewUser_Should_Return_Null_When_User_Not_Created()
     {
         var entraUser = new Microsoft.Graph.Models.User
         {
@@ -93,8 +102,8 @@ public class PureserviceUserServiceTests
         const int physicalAddressId = 7;
         const int phoneNumberId = 8;
 
-        _pureserviceCaller.PostAsync<UserList>(Arg.Is<string>(s => s.StartsWith("user")), Arg.Any<object>())
-            .Returns(new UserList([], new Linked()));
+        _pureserviceCaller.PostAsync<User>(Arg.Is<string>(s => s.StartsWith("user")), Arg.Any<object>())
+            .ReturnsNull();
         
         var userList = await _service.CreateNewUser(entraUser, null, companyId, physicalAddressId, phoneNumberId, emailAddressId);
         
