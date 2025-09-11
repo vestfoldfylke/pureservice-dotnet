@@ -20,7 +20,8 @@
         <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.0.0" />
         <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="2.0.0" />
         <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="2.0.2" />
-        <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.OpenApi" Version="1.5.1" />
+        <!-- Don't include until bumped for "https://github.com/advisories/GHSA-ghhp-997w-qr28" and "https://github.com/advisories/GHSA-cmhx-cq75-c4mj"
+        <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.OpenApi" Version="1.5.1" /> -->
         <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.5" />
         <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.9" />
         <PackageReference Include="Vestfold.Extensions.Authentication" Version="1.0.3" />

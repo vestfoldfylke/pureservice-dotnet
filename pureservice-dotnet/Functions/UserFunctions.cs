@@ -1,16 +1,15 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Net;
+//using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
+/*using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
 using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi.Models;*/
 using pureservice_dotnet.Models;
 using pureservice_dotnet.Models.Enums;
 using pureservice_dotnet.Services;
@@ -45,12 +44,11 @@ public class UserFunctions
     }
 
     [Function("Synchronize")]
-    [OpenApiOperation(operationId: "Synchronize")]
+    /*[OpenApiOperation(operationId: "Synchronize")]
     [OpenApiSecurity("Authentication", SecuritySchemeType.ApiKey, Name = "X-Functions-Key", In = OpenApiSecurityLocationType.Header)]
     [OpenApiResponseWithBody(HttpStatusCode.OK, "application/json", typeof(SynchronizationResult), Description = "Trigger finished")]
     [OpenApiResponseWithBody(HttpStatusCode.BadRequest, "text/plain", typeof(string), Description = "Trigger failed")]
-    [OpenApiResponseWithBody(HttpStatusCode.InternalServerError, "text/plain", typeof(string), Description = "Error occured")]
-    [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
+    [OpenApiResponseWithBody(HttpStatusCode.InternalServerError, "text/plain", typeof(string), Description = "Error occured")]*/
     public async Task<IActionResult> Synchronize([HttpTrigger(AuthorizationLevel.Function, "post", Route = "User/Synchronize")] HttpRequest req)
     {
         _logger.LogInformation("Starting UserFunctions_Synchronize");
@@ -98,7 +96,7 @@ public class UserFunctions
                 {
                     if (entraUser.AccountEnabled.HasValue && !entraUser.AccountEnabled.Value)
                     {
-                        _logger.LogInformation("Entra user with Id {EntraId} is disabled in Entra. Skipping creation in Pureservice");
+                        _logger.LogInformation("Entra user with Id {EntraId} is disabled in Entra. Skipping creation in Pureservice", entraUser.Id);
                         synchronizationResult.UserDisabledCount++;
                         continue;
                     }
@@ -147,19 +145,18 @@ public class UserFunctions
         return new JsonResult(synchronizationResult);
     }
 
-    [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
     private (User? pureserviceUser, User? pureserviceManagerUser, bool skipUser) GetPureserviceUserInfo(Microsoft.Graph.Models.User entraUser, UserList pureserviceUsers, SynchronizationResult synchronizationResult)
     {
         if (entraUser.Mail is null && entraUser.AccountEnabled.HasValue && entraUser.AccountEnabled.Value)
         {
-            _logger.LogError("Entra user with Id {EntraId} has no email address. Skipping");
+            _logger.LogError("Entra user with Id {EntraId} has no email address. Skipping", entraUser.Id);
             synchronizationResult.UserMissingEmailAddressCount++;
             return (null, null, true);
         }
 
         if (entraUser.CompanyName is null && entraUser.AccountEnabled.HasValue && entraUser.AccountEnabled.Value)
         {
-            _logger.LogError("Entra user with Id {EntraId} has no company name. Skipping");
+            _logger.LogError("Entra user with Id {EntraId} has no company name. Skipping", entraUser.Id);
             synchronizationResult.UserMissingCompanyNameCount++;
             return (null, null, true);
         }
@@ -173,19 +170,18 @@ public class UserFunctions
         return (pureserviceUser, pureserviceManagerUser, false);
     }
 
-    [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
     private (EmailAddress? primaryEmailAddress, PhoneNumber? primaryPhoneNumber, List<int> phoneNumberIds) GetPureserviceUserContactInfo(User pureserviceUser, UserList pureserviceUsers, SynchronizationResult synchronizationResult)
     {
         if (pureserviceUser.Links is null)
         {
-            _logger.LogError("UserId {UserId} has no links. Skipping");
+            _logger.LogError("UserId {UserId} has no links. Skipping", pureserviceUser.Id);
             synchronizationResult.UserErrorCount++;
             return (null, null, []);
         }
 
         if (pureserviceUser.Links.EmailAddress is null)
         {
-            _logger.LogError("UserId {UserId} has no email address. Skipping");
+            _logger.LogError("UserId {UserId} has no email address. Skipping", pureserviceUser.Id);
             synchronizationResult.UserMissingEmailAddressCount++;
             return (null, null, []);
         }
@@ -208,7 +204,6 @@ public class UserFunctions
         return (primaryEmailAddress, primaryPhoneNumber, phoneNumberIds);
     }
 
-    [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
     private async Task CreateUser(Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser, int companyId, CompanyDepartment? department, CompanyLocation? location,
         SynchronizationResult synchronizationResult)
     {
@@ -222,7 +217,7 @@ public class UserFunctions
         
         synchronizationResult.UserHandledCount++;
         
-        _logger.LogWarning("Entra user with Id {EntraId} not found in Pureservice by ImportUniqueKey. User will be created");
+        _logger.LogWarning("Entra user with Id {EntraId} not found in Pureservice by ImportUniqueKey. User will be created", entraUser.Id);
 
         if (entraUser.Manager?.Id is not null && pureserviceManagerUser is null)
         {
@@ -234,7 +229,7 @@ public class UserFunctions
         var physicalAddressResult = await _pureservicePhysicalAddressService.AddNewPhysicalAddress(null, null, null, "Norway");
         if (physicalAddressResult is null)
         {
-            _logger.LogError("Failed to create physical address for new pureservice user with EntraId {EntraId}. User will not be created");
+            _logger.LogError("Failed to create physical address for new pureservice user with EntraId {EntraId}. User will not be created", entraUser.Id);
             synchronizationResult.UserErrorCount++;
             return;
         }
@@ -274,7 +269,6 @@ public class UserFunctions
         }
     }
     
-    [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
     private async Task UpdateUser(User pureserviceUser, Microsoft.Graph.Models.User entraUser, EmailAddress emailAddress, PhoneNumber? phoneNumber, List<PhoneNumber> phoneNumbers,
         User? pureserviceManagerUser, List<Company> companies, List<CompanyDepartment> companyDepartments, List<CompanyLocation> companyLocations, SynchronizationResult synchronizationResult)
     {
@@ -306,7 +300,7 @@ public class UserFunctions
         if (basicPropertiesToUpdate.Count == 0 && companyPropertiesToUpdate.Count == 0 && !updateEmail && !phoneNumberUpdate.Update)
         {
             synchronizationResult.UserUpToDateCount++;
-            _logger.LogInformation("User with UserId {UserId} is up to date");
+            _logger.LogInformation("User with UserId {UserId} is up to date", pureserviceUser.Id);
             return;
         }
         
