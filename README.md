@@ -62,6 +62,7 @@ Create a `local.settings.json` file in the `pureservice-dotnet` folder with the 
     "MicrosoftTeams_MinimumLevel": "Error",
     "Pureservice_BaseUrl": "https://instancename.pureservice.com/agent/api/",
     "Pureservice_ApiKey": "your-api-key",
+    "Pureservice_Max_Requests_Per_Minute": "100",
     "AZURE_CLIENT_ID": "azure-client-id",
     "AZURE_CLIENT_SECRET": "azure-client-secret",
     "AZURE_TENANT_ID": "azure-tenant-id",

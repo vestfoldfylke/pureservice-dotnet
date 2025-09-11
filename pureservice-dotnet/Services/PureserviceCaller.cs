@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -12,6 +14,7 @@ namespace pureservice_dotnet.Services;
 public interface IPureserviceCaller
 {
     Task<T?> GetAsync<T>(string endpoint) where T : class;
+    (bool needsToWait, int requestCountLastMinute) NeedsToWait(int expectedRequestCount);
     Task<T?> PatchAsync<T>(string endpoint, object payload) where T : class;
     Task<bool> PatchAsync(string endpoint, object payload);
     Task<T?> PostAsync<T>(string endpoint, object payload) where T : class;
@@ -23,6 +26,9 @@ public class PureserviceCaller : IPureserviceCaller
 {
     private readonly ILogger<PureserviceCaller> _logger;
     private readonly IMetricsService _metricsService;
+
+    private readonly int _maxRequestsPerMinute;
+    private readonly List<DateTime> _requestTimestamps;
 
     private readonly HttpClient _client;
     
@@ -38,11 +44,13 @@ public class PureserviceCaller : IPureserviceCaller
     {
         _logger = logger;
         _metricsService = metricsService;
+        
+        _maxRequestsPerMinute = configuration.GetValue<int?>("Pureservice_Max_Requests_Per_Minute") ?? throw new InvalidOperationException("Pureservice_Max_Requests_Per_Minute is not configured");
+        
+        _requestTimestamps = [];
 
-        var baseUrl = configuration.GetValue<string>("Pureservice_BaseUrl") ??
-                      throw new InvalidOperationException("Pureservice_BaseUrl is not configured");
-        var apiKey = configuration.GetValue<string>("Pureservice_ApiKey") ??
-            throw new InvalidOperationException("Pureservice_ApiKey is not configured");
+        var baseUrl = configuration.GetValue<string>("Pureservice_BaseUrl") ?? throw new InvalidOperationException("Pureservice_BaseUrl is not configured");
+        var apiKey = configuration.GetValue<string>("Pureservice_ApiKey") ?? throw new InvalidOperationException("Pureservice_ApiKey is not configured");
 
         _client = new HttpClient
         {
@@ -112,6 +120,15 @@ public class PureserviceCaller : IPureserviceCaller
             _metricsService.Count($"{Constants.MetricsPrefix}_{MetricsServicePrefix}_GetRequest", "Number of GET requests to Pureservice",
                 (Constants.MetricsResultLabelName, isSuccess ? Constants.MetricsResultSuccessLabelValue : Constants.MetricsResultFailedLabelValue));
         }
+    }
+
+    public (bool needsToWait, int requestCountLastMinute) NeedsToWait(int expectedRequestCount)
+    {
+        var first = DateTime.Now.AddMinutes(-1);
+        var last = DateTime.Now;
+        var requestCountLastMinute = _requestTimestamps.Count(dt => dt >= first && dt <= last);
+        
+        return (requestCountLastMinute + expectedRequestCount > _maxRequestsPerMinute, requestCountLastMinute);
     }
     
     public async Task<T?> PatchAsync<T>(string endpoint, object payload) where T : class
@@ -449,10 +466,16 @@ public class PureserviceCaller : IPureserviceCaller
 
         try
         {
+            _requestTimestamps.Add(DateTime.Now);
+            
             response = await _client.SendAsync(request);
             content = await response.Content.ReadAsStringAsync();
             statusCode = (int)response.StatusCode;
             isSuccess = response.IsSuccessStatusCode;
+            
+            // Clean up old timestamps
+            _requestTimestamps.RemoveAll(dt => dt < DateTime.Now.AddMinutes(-15));
+            
             return (response, content, statusCode, isSuccess);
         }
         catch (Exception)

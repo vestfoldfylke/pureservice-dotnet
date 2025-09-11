@@ -24,17 +24,20 @@ public class UserFunctions
     private readonly IGraphService _graphService;
     private readonly ILogger<UserFunctions> _logger;
     private readonly IMetricsService _metricsService;
+    private readonly IPureserviceCaller _pureserviceCaller;
     private readonly IPureserviceEmailAddressService _pureserviceEmailAddressService;
     private readonly IPureservicePhoneNumberService _pureservicePhoneNumberService;
     private readonly IPureservicePhysicalAddressService _pureservicePhysicalAddressService;
     private readonly IPureserviceUserService _pureserviceUserService;
 
-    public UserFunctions(IGraphService graphService, ILogger<UserFunctions> logger, IMetricsService metricsService, IPureserviceEmailAddressService pureserviceEmailAddressService,
-        IPureservicePhoneNumberService pureservicePhoneNumberService, IPureservicePhysicalAddressService pureservicePhysicalAddressService, IPureserviceUserService pureserviceUserService)
+    public UserFunctions(IGraphService graphService, ILogger<UserFunctions> logger, IMetricsService metricsService, IPureserviceCaller pureserviceCaller,
+        IPureserviceEmailAddressService pureserviceEmailAddressService, IPureservicePhoneNumberService pureservicePhoneNumberService,
+        IPureservicePhysicalAddressService pureservicePhysicalAddressService, IPureserviceUserService pureserviceUserService)
     {
         _graphService = graphService;
         _logger = logger;
         _metricsService = metricsService;
+        _pureserviceCaller = pureserviceCaller;
         _pureserviceEmailAddressService = pureserviceEmailAddressService;
         _pureservicePhoneNumberService = pureservicePhoneNumberService;
         _pureservicePhysicalAddressService = pureservicePhysicalAddressService;
@@ -209,6 +212,14 @@ public class UserFunctions
     private async Task CreateUser(Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser, int companyId, CompanyDepartment? department, CompanyLocation? location,
         SynchronizationResult synchronizationResult)
     {
+        const int expectedRequestCount = 5; // PhysicalAddress, PhoneNumber, EmailAddress, User, DepartmentAndLocation (maybe)
+        var (needsToWait, requestCountLastMinute) = _pureserviceCaller.NeedsToWait(expectedRequestCount);
+        if (needsToWait)
+        {
+            _logger.LogWarning("Throttling in Pureservice API detected. Skipping user creation this sweep. Request count last minute: {RequestCountLastMinute}", requestCountLastMinute);
+            return;
+        }
+        
         _logger.LogWarning("Entra user with Id {EntraId} not found in Pureservice by ImportUniqueKey. User will be created");
 
         if (entraUser.Manager?.Id is not null && pureserviceManagerUser is null)
@@ -265,6 +276,14 @@ public class UserFunctions
     private async Task UpdateUser(User pureserviceUser, Microsoft.Graph.Models.User entraUser, EmailAddress emailAddress, PhoneNumber? phoneNumber, List<PhoneNumber> phoneNumbers,
         User? pureserviceManagerUser, List<Company> companies, List<CompanyDepartment> companyDepartments, List<CompanyLocation> companyLocations, SynchronizationResult synchronizationResult)
     {
+        const int expectedRequestCount = 5; // BasicProperties, CompanyProperties, EmailAddress, (PhoneNumber (maybe add) and PhoneNumber (maybe set as default)), (PhoneNumber (maybe update) and PhoneNumber (maybe set as default)), PhoneNumber (maybe update) 
+        var (needsToWait, requestCountLastMinute) = _pureserviceCaller.NeedsToWait(expectedRequestCount);
+        if (needsToWait)
+        {
+            _logger.LogWarning("Throttling in Pureservice API detected. Skipping user update this sweep. Request count last minute: {RequestCountLastMinute}", requestCountLastMinute);
+            return;
+        }
+        
         if (entraUser.Manager?.Id is not null && pureserviceManagerUser is null)
         {
             _logger.LogInformation("Manager with EntraId {EntraManagerId} for pureservice user with UserId {UserId} not found in Pureservice. Manager will be updated on user on next sweep",
