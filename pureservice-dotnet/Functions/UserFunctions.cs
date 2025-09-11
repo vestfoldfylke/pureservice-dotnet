@@ -107,7 +107,6 @@ public class UserFunctions
                         // TODO: Company needs to be created?
                         _logger.LogError("CompanyName {CompanyName} for new pureservice user with EntraId {EntraId} not found in Pureservice. User will not be created", entraUser.CompanyName, entraUser.Id);
                         synchronizationResult.CompanyMissingInPureserviceCount++;
-                        synchronizationResult.UserErrorCount++;
                         continue;
                     }
 
