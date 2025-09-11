@@ -65,8 +65,10 @@ Create a `local.settings.json` file in the `pureservice-dotnet` folder with the 
     "AZURE_CLIENT_ID": "azure-client-id",
     "AZURE_CLIENT_SECRET": "azure-client-secret",
     "AZURE_TENANT_ID": "azure-tenant-id",
-    "Employee_Email_Domain": "@yourorg.edu",
-    "Student_Email_Domain": "@yourschool.edu"
+    "Employee_Auto_Users_OU": "OU=path,OU=to,OU=auto-users-ou,DC=domain,DC=something,DC=edu",
+    "Employee_Auto_Disabled_Users_OU": "OU=path,OU=to,OU=auto-disabled-users-ou,DC=domain,DC=something,DC=edu",
+    "Student_Email_Domain": "@school.edu",
+    "Student_Job_Title": "school-job-title"
   }
 }
 ```

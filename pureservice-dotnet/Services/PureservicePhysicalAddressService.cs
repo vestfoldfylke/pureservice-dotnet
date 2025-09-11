@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using pureservice_dotnet.Models;
-using pureservice_dotnet.Models.ActionModels;
 using Vestfold.Extensions.Metrics.Services;
 
 namespace pureservice_dotnet.Services;
@@ -29,8 +28,22 @@ public class PureservicePhysicalAddressService : IPureservicePhysicalAddressServ
 
     public async Task<PhysicalAddress?> AddNewPhysicalAddress(string? streetAddress, string? city, string? postalCode, string? country)
     {
+        var payload = new
+        {
+            physicaladdresses = new[]
+            {
+                new
+                {
+                    streetAddress,
+                    city,
+                    postalCode,
+                    country
+                }
+            }
+        };
+        
         _logger.LogInformation("Creating physical address");
-        var result = await _pureserviceCaller.PostAsync<PhysicalAddress>($"{BasePath}", new AddPhysicalAddress([new NewPhysicalAddress(streetAddress, city, postalCode, country)]));
+        var result = await _pureserviceCaller.PostAsync<PhysicalAddress>($"{BasePath}", payload);
         
         if (result is not null)
         {
@@ -40,7 +53,7 @@ public class PureservicePhysicalAddressService : IPureservicePhysicalAddressServ
             return result;
         }
         
-        _logger.LogError("Failed to create physical address: {@Address}", new { streetAddress, city, postalCode, country });
+        _logger.LogError("Failed to create physical address: {@Payload}", payload);
         _metricsService.Count($"{Constants.MetricsPrefix}_PhysicalAddressCreated", "Number of physical addresses created",
             (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
         return null;
@@ -48,8 +61,23 @@ public class PureservicePhysicalAddressService : IPureservicePhysicalAddressServ
 
     public async Task<bool> UpdatePhysicalAddress(int physicalAddressId, string? streetAddress, string? city, string? postalCode, string? country)
     {
+        var payload = new
+        {
+            physicaladdresses = new[]
+            {
+                new
+                {
+                    id = physicalAddressId,
+                    streetAddress,
+                    city,
+                    postalCode,
+                    country
+                }
+            }
+        };
+        
         _logger.LogInformation("Updating PhysicalAddressId {PhysicalAddressId}", physicalAddressId);
-        var result = await _pureserviceCaller.PutAsync($"{BasePath}/{physicalAddressId}", new UpdatePhysicalAddress([new UpdatePhysicalAddressItem(physicalAddressId, streetAddress, city, postalCode, country)]));
+        var result = await _pureserviceCaller.PutAsync($"{BasePath}/{physicalAddressId}", payload);
 
         if (result)
         {
@@ -59,7 +87,7 @@ public class PureservicePhysicalAddressService : IPureservicePhysicalAddressServ
             return true;
         }
         
-        _logger.LogError("Failed to update PhysicalAddressId {PhysicalAddressId}: {@PhysicalAddress}", physicalAddressId, new { streetAddress, city, postalCode, country });
+        _logger.LogError("Failed to update PhysicalAddressId {PhysicalAddressId}: {@Payload}", physicalAddressId, payload);
         _metricsService.Count($"{Constants.MetricsPrefix}_PhysicalAddressUpdated", "Number of physical addresses updated",
             (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
         return false;

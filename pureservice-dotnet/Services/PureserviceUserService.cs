@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Web;
 using Microsoft.Extensions.Logging;
 using pureservice_dotnet.Models;
-using pureservice_dotnet.Models.ActionModels;
 using pureservice_dotnet.Models.Enums;
 using Vestfold.Extensions.Metrics.Services;
 
@@ -16,7 +14,6 @@ public interface IPureserviceUserService
 {
     Task<User?> CreateNewUser(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId,
         int physicalAddressId, int phoneNumberId, int emailAddressId);
-    Task<UserList> GetUser(string filter, string[]? entities = null);
     Task<UserList> GetUser(int userId, string[]? entities = null);
     Task<UserList> GetUsers(string[]? entities = null, int start = 0, int limit = 500, bool includeSystemUsers = false, bool includeInactiveUsers = false);
     List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))> NeedsBasicUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser = null);
@@ -26,11 +23,8 @@ public interface IPureserviceUserService
     Task<bool> RegisterPhoneNumberAsDefault(int userId, int phoneNumberId);
     Task<bool> UpdateBasicProperties(int userId,
         List<(string PropertyName, (string? StringValue, int? IntValue, bool? BoolValue) PropertyValue)> propertiesToUpdate);
-    Task<bool> UpdateCompany(int userId, int companyId);
     Task<bool> UpdateCompanyProperties(int userId, List<(string PropertyName, int? Id)> propertiesToUpdate);
-    Task<bool> UpdateDepartmentAndLocation(int userId, int departmentId, int locationId);
-    Task<bool> UpdateManager(int userId, int managerId);
-    Task<bool> UpdateName(int userId, string firstName, string lastName, string? fullName = null);
+    Task<bool> UpdateDepartmentAndLocation(int userId, int? departmentId, int? locationId);
 }
 
 public class PureserviceUserService : IPureserviceUserService
@@ -58,9 +52,7 @@ public class PureserviceUserService : IPureserviceUserService
                 new
                 {
                     firstName = entraUser.GivenName!,
-                    middleName = "",
                     lastName = entraUser.Surname!,
-                    fullName = entraUser.DisplayName!,
                     unavailable = false,
                     title = entraUser.JobTitle ?? "",
                     managerId,
@@ -78,7 +70,7 @@ public class PureserviceUserService : IPureserviceUserService
                     {
                         address = new { id = physicalAddressId, type = "physicaladdress" },
                         emailAddress = new { id = emailAddressId, type = "emailaddress" },
-                        phoneNumber = new { id = phoneNumberId, type = "phonenumber" },
+                        phonenumber = new { id = phoneNumberId, type = "phonenumber" },
                         company = new { id = companyId, type = "company" }
                     }
                 }
@@ -95,20 +87,9 @@ public class PureserviceUserService : IPureserviceUserService
             return result;
         }
         
-        _logger.LogError("Failed to create new pureservice user with ImportUniqueKey {ImportUniqueKey}", entraUser.Id);
+        _logger.LogError("Failed to create new pureservice user with ImportUniqueKey {ImportUniqueKey}: {@Payload}", entraUser.Id, payload);
         _metricsService.Count($"{Constants.MetricsPrefix}_CreatedNewUser", "Number of users created", (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
         return null;
-    }
-
-    public async Task<UserList> GetUser(string filter, string[]? entities = null)
-    {
-        var endpoint = $"{BasePath}?filter={filter}";
-        if (entities != null)
-        {
-            endpoint += $"&include={string.Join(",", entities)}";
-        }
-        
-        return await _pureserviceCaller.GetAsync<UserList>(endpoint) ?? new UserList([], null);
     }
     
     public async Task<UserList> GetUser(int userId, string[]? entities = null)
@@ -171,48 +152,48 @@ public class PureserviceUserService : IPureserviceUserService
                 return userList;
             }
             
-            _logger.LogInformation("Fetched {Count} users starting from {Start} with limit {Limit}", result.Users.Count, currentStart, limit);
+            _logger.LogDebug("Fetched {Count} users starting from {Start} with limit {Limit}", result.Users.Count, currentStart, limit);
             userList.Users.AddRange(result.Users);
             
             if (result.Linked?.Companies is not null && userList.Linked?.Companies is not null)
             {
-                _logger.LogInformation("Fetched {Count} companies linked to users", result.Linked.Companies.Count);
+                _logger.LogDebug("Fetched {Count} companies linked to users", result.Linked.Companies.Count);
                 userList.Linked.Companies.AddRange(result.Linked.Companies);
             }
             
             if (result.Linked?.CompanyDepartments is not null && userList.Linked?.CompanyDepartments is not null)
             {
-                _logger.LogInformation("Fetched {Count} company departments available to users", result.Linked.CompanyDepartments.Count);
+                _logger.LogDebug("Fetched {Count} company departments available to users", result.Linked.CompanyDepartments.Count);
                 userList.Linked.CompanyDepartments.AddRange(result.Linked.CompanyDepartments);
             }
             
             if (result.Linked?.CompanyLocations is not null && userList.Linked?.CompanyLocations is not null)
             {
-                _logger.LogInformation("Fetched {Count} company locations available to users", result.Linked.CompanyLocations.Count);
+                _logger.LogDebug("Fetched {Count} company locations available to users", result.Linked.CompanyLocations.Count);
                 userList.Linked.CompanyLocations.AddRange(result.Linked.CompanyLocations);
             }
             
             if (result.Linked?.EmailAddresses is not null && userList.Linked?.EmailAddresses is not null)
             {
-                _logger.LogInformation("Fetched {Count} email addresses linked to users", result.Linked.EmailAddresses.Count);
+                _logger.LogDebug("Fetched {Count} email addresses linked to users", result.Linked.EmailAddresses.Count);
                 userList.Linked.EmailAddresses.AddRange(result.Linked.EmailAddresses);
             }
             
             if (result.Linked?.Languages is not null && userList.Linked?.Languages is not null)
             {
-                _logger.LogInformation("Fetched {Count} languages available to users", result.Linked.Languages.Count);
+                _logger.LogDebug("Fetched {Count} languages available to users", result.Linked.Languages.Count);
                 userList.Linked.Languages.AddRange(result.Linked.Languages);
             }
             
             if (result.Linked?.PhoneNumbers is not null && userList.Linked?.PhoneNumbers is not null)
             {
-                _logger.LogInformation("Fetched {Count} phone numbers linked to users", result.Linked.PhoneNumbers.Count);
+                _logger.LogDebug("Fetched {Count} phone numbers linked to users", result.Linked.PhoneNumbers.Count);
                 userList.Linked.PhoneNumbers.AddRange(result.Linked.PhoneNumbers);
             }
             
             if (result.Users.Count == 0)
             {
-                _logger.LogInformation("Returning {UserCount} pureservice users, {CompanyCount} companies, {DepartmentCount} departments, {LocationCount} locations, {EmailAddressCount} emailaddresses, {LanguageCount} languages and {PhoneNumberCount} phone numbers",
+                _logger.LogInformation("Returning {UserCount} pureservice users, {CompanyCount} companies, {DepartmentCount} departments, {LocationCount} locations, {EmailAddressCount} email addresses, {LanguageCount} languages and {PhoneNumberCount} phone numbers",
                     userList.Users.Count, userList.Linked?.Companies?.Count ?? 0,
                     userList.Linked?.CompanyDepartments?.Count ?? 0, userList.Linked?.CompanyLocations?.Count ?? 0,
                     userList.Linked?.EmailAddresses?.Count ?? 0, userList.Linked?.Languages?.Count ?? 0,
@@ -221,10 +202,10 @@ public class PureserviceUserService : IPureserviceUserService
             }
 
             currentStart += result.Users.Count;
-            _logger.LogInformation("Preparing to fetch next batch of users starting from start {Start} and limit {Limit}", currentStart, limit);
+            _logger.LogDebug("Preparing to fetch next batch of users starting from start {Start} and limit {Limit}", currentStart, limit);
         }
         
-        _logger.LogInformation("Reached outside of while somehow 😱 Returning {UserCount} user count with {EmailAddressCount} emailaddresses and {PhoneNumberCount} phone numbers",
+        _logger.LogWarning("Reached outside of while somehow 😱 Returning {UserCount} user count with {EmailAddressCount} emailaddresses and {PhoneNumberCount} phone numbers",
             userList.Users.Count, userList.Linked?.EmailAddresses?.Count ?? 0, userList.Linked?.PhoneNumbers?.Count ?? 0);
         return userList;
     }
@@ -241,11 +222,6 @@ public class PureserviceUserService : IPureserviceUserService
         if (pureserviceUser.LastName != entraUser.Surname)
         {
             propertiesToUpdate.Add(("lastName", (entraUser.Surname, null, null)));
-        }
-        
-        if (pureserviceUser.FullName != entraUser.DisplayName)
-        {
-            propertiesToUpdate.Add(("fullName", (entraUser.DisplayName, null, null)));
         }
         
         if (pureserviceUser.Title != entraUser.JobTitle)
@@ -292,27 +268,30 @@ public class PureserviceUserService : IPureserviceUserService
         return propertiesToUpdate;
     }
     
-    [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
     public async Task<bool> RegisterPhoneNumberAsDefault(int userId, int phoneNumberId)
     {
-        _logger.LogInformation("Registering PhoneNumberId {PhoneNumberId} as default for UserId {UserId}", phoneNumberId);
-        var result = await _pureserviceCaller.PatchAsync($"{BasePath}/{userId}", new RegisterPhoneNumberAsDefault(phoneNumberId));
+        var payload = new
+        {
+            phonenumberId = phoneNumberId
+        };
+        
+        _logger.LogInformation("Registering PhoneNumberId {PhoneNumberId} as default for UserId {UserId}", phoneNumberId, userId);
+        var result = await _pureserviceCaller.PatchAsync($"{BasePath}/{userId}", payload);
 
         if (result)
         {
-            _logger.LogInformation("Successfully registered PhoneNumberId {PhoneNumberId} as default for UserId {UserId}", phoneNumberId);
+            _logger.LogInformation("Successfully registered PhoneNumberId {PhoneNumberId} as default for UserId {UserId}", phoneNumberId, userId);
             _metricsService.Count($"{Constants.MetricsPrefix}_UpdatePhoneNumberDefault", "Number of phone number default updates",
                 (Constants.MetricsResultLabelName, Constants.MetricsResultSuccessLabelValue));
             return true;
         }
         
-        _logger.LogError("Failed to register PhoneNumberId {PhoneNumberId} as default for UserId {UserId}", phoneNumberId);
+        _logger.LogError("Failed to register PhoneNumberId {PhoneNumberId} as default for UserId {UserId}: {@Payload}", phoneNumberId, userId, payload);
         _metricsService.Count($"{Constants.MetricsPrefix}_UpdatePhoneNumberDefault", "Number of phone number default updates",
             (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
         return false;
     }
 
-    [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
     public async Task<bool> UpdateBasicProperties(int userId, List<(string PropertyName, (string? StringValue, int? IntValue, bool? BoolValue) PropertyValue)> propertiesToUpdate)
     {
         var payload = new Dictionary<string, object?>();
@@ -347,43 +326,23 @@ public class PureserviceUserService : IPureserviceUserService
 
         var propertyNames = propertiesToUpdate.Select(p => p.PropertyName);
 
-        _logger.LogInformation("Updating PropertyNames {@PropertyNames} on UserId {UserId}", propertyNames);
+        _logger.LogInformation("Updating basic PropertyNames {@PropertyNames} on UserId {UserId}", propertyNames, userId);
         var result = await _pureserviceCaller.PatchAsync($"{BasePath}/{userId}", payload);
         
         if (result)
         {
-            _logger.LogInformation("Successfully updated {PropertyCount} properties on UserId {UserId}", propertiesToUpdate.Count);
+            _logger.LogInformation("Successfully updated {PropertyCount} basic properties on UserId {UserId}", payload.Count, userId);
             _metricsService.Count($"{Constants.MetricsPrefix}_UpdatedBasicProperties", "Number of basic properties updates",
                 (Constants.MetricsResultLabelName, Constants.MetricsResultSuccessLabelValue));
             return true;
         }
         
-        _logger.LogError("Failed to update {PropertyCount} properties on UserId {UserId}: {@Properties}", propertiesToUpdate.Count, userId, payload);
+        _logger.LogError("Failed to update {PropertyCount} basic properties on UserId {UserId}: {@Payload}", propertiesToUpdate.Count, userId, payload);
         _metricsService.Count($"{Constants.MetricsPrefix}_UpdatedBasicProperties", "Number of basic properties updates",
             (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
         return false;
     }
 
-    public async Task<bool> UpdateCompany(int userId, int companyId)
-    {
-        _logger.LogInformation("Updating company on UserId {UserId}", userId);
-        var result = await _pureserviceCaller.PatchAsync($"{BasePath}/{userId}", new UpdateCompany(companyId));
-        
-        if (result)
-        {
-            _logger.LogInformation("Successfully updated company on UserId {UserId} to CompanyId {CompanyId}", userId, companyId);
-            _metricsService.Count($"{Constants.MetricsPrefix}_UpdateCompany", "Number of company updates",
-                (Constants.MetricsResultLabelName, Constants.MetricsResultSuccessLabelValue));
-            return true;
-        }
-        
-        _logger.LogError("Failed to update company on UserId {UserId} to CompanyId {CompanyId}", userId, companyId);
-        _metricsService.Count($"{Constants.MetricsPrefix}_UpdateCompany", "Number of company updates",
-            (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
-        return false;
-    }
-
-    [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
     public async Task<bool> UpdateCompanyProperties(int userId, List<(string PropertyName, int? Id)> propertiesToUpdate)
     {
         var payload = new Dictionary<string, int?>();
@@ -400,87 +359,54 @@ public class PureserviceUserService : IPureserviceUserService
         
         var propertyNames = propertiesToUpdate.Select(p => p.PropertyName);
 
-        _logger.LogInformation("Updating company PropertyNames {@PropertyNames} on UserId {UserId}", propertyNames);
+        _logger.LogInformation("Updating company PropertyNames {@PropertyNames} on UserId {UserId}", propertyNames, userId);
         var result = await _pureserviceCaller.PatchAsync($"{BasePath}/{userId}", payload);
         
         if (result)
         {
-            _logger.LogInformation("Successfully updated {PropertyCount} company properties on UserId {UserId}", propertiesToUpdate.Count);
+            _logger.LogInformation("Successfully updated {PropertyCount} company properties on UserId {UserId}", payload.Count, userId);
             _metricsService.Count($"{Constants.MetricsPrefix}_UpdatedCompanyProperties", "Number of company properties updates",
                 (Constants.MetricsResultLabelName, Constants.MetricsResultSuccessLabelValue));
             return true;
         }
         
-        _logger.LogError("Failed to update {PropertyCount} company properties on UserId {UserId}: {@Properties}", propertiesToUpdate.Count, userId, payload);
+        _logger.LogError("Failed to update {PropertyCount} company properties on UserId {UserId}: {@Payload}", propertiesToUpdate.Count, userId, payload);
         _metricsService.Count($"{Constants.MetricsPrefix}_UpdatedCompanyProperties", "Number of company properties updates",
             (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
         return false;
     }
-
-    public async Task<bool> UpdateDepartmentAndLocation(int userId, int departmentId, int locationId)
+    
+    public async Task<bool> UpdateDepartmentAndLocation(int userId, int? departmentId, int? locationId)
     {
-        var payload = new UpdateDepartmentAndLocation(departmentId, locationId);
+        var payload = new Dictionary<string, int?>();
+        if (departmentId.HasValue)
+        {
+            payload.Add("companyDepartmentId", departmentId.Value);
+        }
+        if (locationId.HasValue)
+        {
+            payload.Add("companyLocationId", locationId.Value);
+        }
         
-        _logger.LogInformation("Updating department and location on UserId {UserId}", userId);
+        var propertyNames = payload.Select(p => p.Key);
+        
+        _logger.LogInformation("Updating company PropertyNames {PropertyNames} on UserId {UserId}", propertyNames, userId);
         var result = await _pureserviceCaller.PatchAsync($"{BasePath}/{userId}", payload);
         
         if (result)
         {
-            _logger.LogInformation("Successfully updated department and location on UserId {UserId}: {@DepartmentAndLocation}", userId, payload);
-            _metricsService.Count($"{Constants.MetricsPrefix}_UpdateDepartmentAndLocation", "Number of department and location updates",
+            _logger.LogInformation("Successfully updated {PropertyCount} company properties on UserId {UserId}", payload.Count, userId);
+            _metricsService.Count($"{Constants.MetricsPrefix}_UpdateDepartmentAndLocation", "Number of department and/or location updates",
                 (Constants.MetricsResultLabelName, Constants.MetricsResultSuccessLabelValue));
             return true;
         }
         
-        _logger.LogError("Failed to update department and location on UserId {UserId}: {@DepartmentAndLocation}", userId, new { departmentId, locationId });
-        _metricsService.Count($"{Constants.MetricsPrefix}_UpdateDepartmentAndLocation", "Number of department and location updates",
-            (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
-        return false;
-    }
-    
-    public async Task<bool> UpdateManager(int userId, int managerId)
-    {
-        _logger.LogInformation("Updating manager on UserId {UserId} to ManagerId {ManagerId}", userId, managerId);
-        var result = await _pureserviceCaller.PatchAsync($"{BasePath}/{userId}", new UpdateManager(managerId));
-        
-        if (result)
-        {
-            _logger.LogInformation("Successfully updated UserId {UserId} with ManagerId {ManagerId}", userId, managerId);
-            _metricsService.Count($"{Constants.MetricsPrefix}_UpdateManager", "Number of manager updates",
-                (Constants.MetricsResultLabelName, Constants.MetricsResultSuccessLabelValue));
-            return true;
-        }
-        
-        _logger.LogError("Failed to update UserId {UserId} with ManagerId {ManagerId}", userId, managerId);
-        _metricsService.Count($"{Constants.MetricsPrefix}_UpdateManager", "Number of manager updates",
-            (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
-        return false;
-    }
-    
-    public async Task<bool> UpdateName(int userId, string firstName, string lastName, string? fullName = null)
-    {
-        fullName ??= $"{firstName} {lastName}";
-        
-        var payload = new UpdateName(firstName, lastName, fullName);
-        
-        _logger.LogInformation("Updating name on UserId {UserId}", userId);
-        var result = await _pureserviceCaller.PatchAsync($"{BasePath}/{userId}", payload);
-        
-        if (result)
-        {
-            _logger.LogInformation("Successfully updated name on UserId {UserId}: {@Name}", userId, payload);
-            _metricsService.Count($"{Constants.MetricsPrefix}_UpdateName", "Number of name updates",
-                (Constants.MetricsResultLabelName, Constants.MetricsResultSuccessLabelValue));
-            return true;
-        }
-        
-        _logger.LogError("Failed to update name on UserId {UserId}: {@Name}", userId, payload);
-        _metricsService.Count($"{Constants.MetricsPrefix}_UpdateName", "Number of name updates",
+        _logger.LogError("Failed to update {PropertyCount} company properties on UserId {UserId}: {@Payload}", payload.Count, userId, payload);
+        _metricsService.Count($"{Constants.MetricsPrefix}_UpdateDepartmentAndLocation", "Number of department and/or location updates",
             (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
         return false;
     }
 
-    [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
     private (bool Update, Company? Company) GetCompany(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies)
     {
         var company = pureserviceUser.CompanyId.HasValue
@@ -500,12 +426,12 @@ public class PureserviceUserService : IPureserviceUserService
             
             if (entraUser.CompanyName is null)
             {
-                // user has no company in Entra and should not have one in PureService
+                // user has no company in Entra and should not have one in Pureservice
                 return (false, null);
             }
             
-            // user has a company in Entra, but we could not find it in PureService, so it needs to be created
-            _logger.LogWarning("Could not find CompanyName {CompanyName} which UserId {UserId} should have", entraUser.CompanyName);
+            // user has a company in Entra, but we could not find it in Pureservice, so it needs to be created
+            _logger.LogInformation("Could not find CompanyName {CompanyName} which UserId {UserId} should have. It needs to be created", entraUser.CompanyName, pureserviceUser.Id);
             
             // TODO: Needs to be created and added
             return (true, null);
@@ -519,24 +445,23 @@ public class PureserviceUserService : IPureserviceUserService
                 return (true, wantedCompany);
             }
             
-            _logger.LogInformation("UserId {UserId} has correct CompanyId {CompanyId}", pureserviceUser.Id, company.Id);
+            _logger.LogDebug("UserId {UserId} has correct CompanyId {CompanyId}", pureserviceUser.Id, company.Id);
             return (false, company);
         }
         
         // company is not null and wantedCompany is null
         if (entraUser.CompanyName is null)
         {
-            // user has no company in Entra and should not have one in PureService
+            // user has no company in Entra and should not have one in Pureservice
             return (true, null);
         }
         
-        _logger.LogWarning("Could not find CompanyName {CompanyName} which UserId {UserId} should have", entraUser.CompanyName);
+        _logger.LogWarning("Could not find CompanyName {CompanyName} in Pureservice which UserId {UserId} should have. It needs to be created", entraUser.CompanyName, pureserviceUser.Id);
             
         // TODO: Needs to be created and added
         return (true, null);
     }
 
-    [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
     private (bool Update, CompanyDepartment? CompanyDepartment) GetDepartment(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<CompanyDepartment> companyDepartments, Company? company)
     {
         if (company is null)
@@ -562,12 +487,13 @@ public class PureserviceUserService : IPureserviceUserService
             
             if (entraUser.Department is null)
             {
-                // user has no department in Entra and should not have one in PureService
+                // user has no department in Entra and should not have one in Pureservice
                 return (false, null);
             }
             
-            // user has a department in Entra, but we could not find it in PureService, so it needs to be created
-            _logger.LogWarning("Could not find DepartmentName {DepartmentName} under CompanyId {CompanyId} which UserId {UserId} should have", entraUser.Department, company.Id);
+            // user has a department in Entra, but we could not find it in Pureservice, so it needs to be created
+            _logger.LogInformation("Could not find DepartmentName {DepartmentName} under CompanyId {CompanyId} which UserId {UserId} should have. It needs to be created",
+                entraUser.Department, company.Id, pureserviceUser.Id);
             
             // TODO: Needs to be created and added??? HOW???
             return (true, null);
@@ -581,24 +507,24 @@ public class PureserviceUserService : IPureserviceUserService
                 return (true, wantedDepartment);
             }
             
-            _logger.LogInformation("UserId {UserId} has correct DepartmentId {DepartmentId} under CompanyId {CompanyId}", pureserviceUser.Id, department.Id, company.Id);
+            _logger.LogDebug("UserId {UserId} has correct DepartmentId {DepartmentId} under CompanyId {CompanyId}", pureserviceUser.Id, department.Id, company.Id);
             return (false, null);
         }
         
         // department is not null and wantedDepartment is null
         if (entraUser.Department is null)
         {
-            // user has no department in Entra and should not have one in PureService
+            // user has no department in Entra and should not have one in Pureservice
             return (true, null);
         }
         
-        _logger.LogWarning("Could not find DepartmentName {DepartmentName} under CompanyId {CompanyId} which UserId {UserId} should have", entraUser.Department, company.Id);
+        _logger.LogWarning("Could not find DepartmentName {DepartmentName} under CompanyId {CompanyId} which UserId {UserId} should have. It needs to be created",
+            entraUser.Department, company.Id, pureserviceUser.Id);
             
         // TODO: Needs to be created and added??? HOW???
         return (true, null);
     }
     
-    [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
     private (bool Update, CompanyLocation? CompanyLocation) GetLocation(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<CompanyLocation> companyLocations, Company? company)
     {
         if (company is null)
@@ -624,12 +550,13 @@ public class PureserviceUserService : IPureserviceUserService
             
             if (entraUser.OfficeLocation is null)
             {
-                // user has no location in Entra and should not have one in PureService
+                // user has no location in Entra and should not have one in Pureservice
                 return (false, null);
             }
             
-            // user has a location in Entra, but we could not find it in PureService, so it needs to be created
-            _logger.LogWarning("Could not find LocationName {LocationName} under CompanyId {CompanyId} which UserId {UserId} should have", entraUser.OfficeLocation, company.Id);
+            // user has a location in Entra, but we could not find it in Pureservice, so it needs to be created
+            _logger.LogInformation("Could not find LocationName {LocationName} under CompanyId {CompanyId} which UserId {UserId} should have. It needs to be created",
+                entraUser.OfficeLocation, company.Id, pureserviceUser.Id);
             
             // TODO: Needs to be created and added??? HOW???
             return (true, null);
@@ -643,18 +570,19 @@ public class PureserviceUserService : IPureserviceUserService
                 return (true, wantedLocation);
             }
             
-            _logger.LogInformation("UserId {UserId} has correct LocationId {LocationId} under CompanyId {CompanyId}", pureserviceUser.Id, location.Id, company.Id);
+            _logger.LogDebug("UserId {UserId} has correct LocationId {LocationId} under CompanyId {CompanyId}", pureserviceUser.Id, location.Id, company.Id);
             return (false, null);
         }
         
         // location is not null and wantedLocation is null
         if (entraUser.OfficeLocation is null)
         {
-            // user has no location in Entra and should not have one in PureService
+            // user has no location in Entra and should not have one in Pureservice
             return (true, null);
         }
         
-        _logger.LogWarning("Could not find LocationName {LocationName} under CompanyId {CompanyId} which UserId {UserId} should have", entraUser.OfficeLocation, company.Id);
+        _logger.LogWarning("Could not find LocationName {LocationName} under CompanyId {CompanyId} which UserId {UserId} should have. It needs to be created",
+            entraUser.OfficeLocation, company.Id, pureserviceUser.Id);
             
         // TODO: Needs to be created and added??? HOW???
         return (true, null);

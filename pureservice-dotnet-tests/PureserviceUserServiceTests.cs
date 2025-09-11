@@ -51,9 +51,7 @@ public class PureserviceUserServiceTests
         {
             Id = 42,
             FirstName = entraUser.GivenName,
-            MiddleName = "",
             LastName = entraUser.Surname,
-            FullName = entraUser.DisplayName,
             Title = entraUser.JobTitle,
             ManagerId = managerId,
             Disabled = !entraUser.AccountEnabled.GetValueOrDefault(allProperties),
@@ -120,9 +118,7 @@ public class PureserviceUserServiceTests
         {
             Id = 42,
             FirstName = "Foo",
-            MiddleName = "",
             LastName = "Bar",
-            FullName = "Foo Bar",
             Title = "Biz",
             ManagerId = managerId,
             Disabled = false,
@@ -149,9 +145,7 @@ public class PureserviceUserServiceTests
                 {
                     Id = managerId.Value,
                     FirstName = "Foo Manager",
-                    MiddleName = "",
                     LastName = "Bar Manager",
-                    FullName = "Foo Manager Bar Manager",
                     Title = "Biz Manager",
                     Disabled = false,
                     Location = "",
@@ -175,9 +169,7 @@ public class PureserviceUserServiceTests
         {
             Id = 42,
             FirstName = "Foo",
-            MiddleName = "",
             LastName = "Bar",
-            FullName = "Foo Bar",
             Title = "Biz",
             ManagerId = null,
             Disabled = active,
@@ -202,9 +194,7 @@ public class PureserviceUserServiceTests
         {
             Id = 1337,
             FirstName = "Foo Manager",
-            MiddleName = "",
             LastName = "Bar Manager",
-            FullName = "Foo Manager Bar Manager",
             Title = "Biz Manager",
             Disabled = false,
             Location = "",
@@ -216,7 +206,7 @@ public class PureserviceUserServiceTests
 
         // all properties needs update
         var result = _service.NeedsBasicUpdate(pureserviceUser, entraUser, pureserviceManagerUser);
-        Assert.Equal(6, result.Count);
+        Assert.Equal(5, result.Count);
         
         // firstName
         Assert.Equal(("firstName", (entraUser.GivenName, null, null)), result[0]);
@@ -224,17 +214,14 @@ public class PureserviceUserServiceTests
         // lastName
         Assert.Equal(("lastName", (entraUser.Surname, null, null)), result[1]);
         
-        // fullName
-        Assert.Equal(("fullName", (entraUser.DisplayName, null, null)), result[2]);
-        
         // title
-        Assert.Equal(("title", (entraUser.JobTitle, null, null)), result[3]);
+        Assert.Equal(("title", (entraUser.JobTitle, null, null)), result[2]);
         
         // managerId
-        Assert.Equal(("managerId", (null, pureserviceManagerUser.Id, null)), result[4]);
+        Assert.Equal(("managerId", (null, pureserviceManagerUser.Id, null)), result[3]);
         
         // disabled
-        Assert.Equal(("disabled", (null, null, !entraUser.AccountEnabled)), result[5]);
+        Assert.Equal(("disabled", (null, null, !entraUser.AccountEnabled)), result[4]);
     }
     
     // NeedsCompanyUpdate
@@ -254,9 +241,7 @@ public class PureserviceUserServiceTests
         {
             Id = 42,
             FirstName = "Foo",
-            MiddleName = "",
             LastName = "Bar",
-            FullName = "Foo Bar",
             Title = "Biz",
             ManagerId = null,
             Disabled = false,
@@ -338,15 +323,13 @@ public class PureserviceUserServiceTests
         {
             Id = 42,
             FirstName = "Foo",
-            MiddleName = "",
             LastName = "Bar",
-            FullName = "Foo Bar",
             Title = "Biz",
             ManagerId = null,
             Disabled = false,
             CompanyId = hasCompany ? companyId : null,
-            CompanyDepartmentId = null, //hasCompany ? departmentId : null,
-            CompanyLocationId = null, //hasCompany ? locationId : null,
+            CompanyDepartmentId = null,
+            CompanyLocationId = null,
             Department = departmentName,
             Location = locationName,
             Links = new Links(),
@@ -363,8 +346,8 @@ public class PureserviceUserServiceTests
             JobTitle = "Biz",
             AccountEnabled = true,
             CompanyName = hasCompany ? null : companyName,
-            OfficeLocation = null, //hasCompany ? companyLocation : null,
-            Department = null //hasCompany ? departmentName : null
+            OfficeLocation = null,
+            Department = null
         };
 
         var companies = new List<Company>
@@ -431,9 +414,7 @@ public class PureserviceUserServiceTests
         {
             Id = 42,
             FirstName = "Foo",
-            MiddleName = "",
             LastName = "Bar",
-            FullName = "Foo Bar",
             Title = "Biz",
             ManagerId = null,
             Disabled = false,
@@ -548,9 +529,7 @@ public class PureserviceUserServiceTests
         {
             Id = 42,
             FirstName = "Foo",
-            MiddleName = "",
             LastName = "Bar",
-            FullName = "Foo Bar",
             Title = "Biz",
             ManagerId = null,
             Disabled = false,
