@@ -210,6 +210,12 @@ public class UserFunctions
         SynchronizationResult synchronizationResult)
     {
         _logger.LogWarning("Entra user with Id {EntraId} not found in Pureservice by ImportUniqueKey. User will be created");
+
+        if (entraUser.Manager?.Id is not null && pureserviceManagerUser is null)
+        {
+            _logger.LogInformation("Manager with EntraId {EntraManagerId} for new pureservice user with EntraId {EntraId} not found in Pureservice. Manager will be updated on user on next sweep",
+                entraUser.Manager.Id, entraUser.Id);
+        }
         
         // NOTE: Create new physical address (with empty fields since we don't need that info in Pureservice for now)
         var physicalAddressResult = await _pureservicePhysicalAddressService.AddNewPhysicalAddress(null, null, null, "Norway");
@@ -259,6 +265,12 @@ public class UserFunctions
     private async Task UpdateUser(User pureserviceUser, Microsoft.Graph.Models.User entraUser, EmailAddress emailAddress, PhoneNumber? phoneNumber, List<PhoneNumber> phoneNumbers,
         User? pureserviceManagerUser, List<Company> companies, List<CompanyDepartment> companyDepartments, List<CompanyLocation> companyLocations, SynchronizationResult synchronizationResult)
     {
+        if (entraUser.Manager?.Id is not null && pureserviceManagerUser is null)
+        {
+            _logger.LogInformation("Manager with EntraId {EntraManagerId} for pureservice user with UserId {UserId} not found in Pureservice. Manager will be updated on user on next sweep",
+                entraUser.Manager.Id, pureserviceUser.Id);
+        }
+        
         var basicPropertiesToUpdate = _pureserviceUserService.NeedsBasicUpdate(pureserviceUser, entraUser, pureserviceManagerUser);
         
         var companyPropertiesToUpdate = _pureserviceUserService.NeedsCompanyUpdate(pureserviceUser, entraUser, companies, companyDepartments, companyLocations);
