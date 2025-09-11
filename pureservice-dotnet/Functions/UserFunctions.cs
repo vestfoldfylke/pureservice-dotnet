@@ -85,7 +85,7 @@ public class UserFunctions
         {
             using (LogContext.PushProperty("EntraId", entraUser.Id))
             {
-                _logger.LogInformation("Processing Entra user '{DisplayName}' with EntraId {EntraId}", entraUser.DisplayName, entraUser.Id);
+                _logger.LogInformation("Processing Entra user {DisplayName} with EntraId {EntraId}", entraUser.DisplayName, entraUser.Id);
 
                 var (pureserviceUser, pureserviceManagerUser, skipUser) = GetPureserviceUserInfo(entraUser, pureserviceUsers, synchronizationResult);
                 
@@ -108,6 +108,7 @@ public class UserFunctions
                     {
                         // TODO: Company needs to be created?
                         _logger.LogError("CompanyName {CompanyName} for new pureservice user with EntraId {EntraId} not found in Pureservice. User will not be created", entraUser.CompanyName, entraUser.Id);
+                        synchronizationResult.CompanyMissingInPureserviceCount++;
                         synchronizationResult.UserErrorCount++;
                         continue;
                     }
@@ -134,7 +135,6 @@ public class UserFunctions
                     
                     var phoneNumbers = pureserviceUsers.Linked.PhoneNumbers.Where(p => phoneNumberIds.Contains(p.Id)).ToList();
 
-                    synchronizationResult.UserCount++;
                     await UpdateUser(pureserviceUser, entraUser, primaryEmailAddress, primaryPhoneNumber, phoneNumbers, pureserviceManagerUser, companies, departments, locations, synchronizationResult);
                 }
             }
@@ -150,14 +150,14 @@ public class UserFunctions
     [SuppressMessage("ReSharper", "StructuredMessageTemplateProblem")]
     private (User? pureserviceUser, User? pureserviceManagerUser, bool skipUser) GetPureserviceUserInfo(Microsoft.Graph.Models.User entraUser, UserList pureserviceUsers, SynchronizationResult synchronizationResult)
     {
-        if (entraUser.Mail is null)
+        if (entraUser.Mail is null && entraUser.AccountEnabled.HasValue && entraUser.AccountEnabled.Value)
         {
             _logger.LogError("Entra user with Id {EntraId} has no email address. Skipping");
             synchronizationResult.UserMissingEmailAddressCount++;
             return (null, null, true);
         }
 
-        if (entraUser.CompanyName is null)
+        if (entraUser.CompanyName is null && entraUser.AccountEnabled.HasValue && entraUser.AccountEnabled.Value)
         {
             _logger.LogError("Entra user with Id {EntraId} has no company name. Skipping");
             synchronizationResult.UserMissingCompanyNameCount++;
@@ -219,6 +219,8 @@ public class UserFunctions
             _logger.LogWarning("Throttling in Pureservice API detected. Skipping user creation this sweep. Request count last minute: {RequestCountLastMinute}", requestCountLastMinute);
             return;
         }
+        
+        synchronizationResult.UserHandledCount++;
         
         _logger.LogWarning("Entra user with Id {EntraId} not found in Pureservice by ImportUniqueKey. User will be created");
 
@@ -283,6 +285,8 @@ public class UserFunctions
             _logger.LogWarning("Throttling in Pureservice API detected. Skipping user update this sweep. Request count last minute: {RequestCountLastMinute}", requestCountLastMinute);
             return;
         }
+        
+        synchronizationResult.UserHandledCount++;
         
         if (entraUser.Manager?.Id is not null && pureserviceManagerUser is null)
         {
