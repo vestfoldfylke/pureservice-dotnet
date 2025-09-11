@@ -63,6 +63,8 @@ Create a `local.settings.json` file in the `pureservice-dotnet` folder with the 
     "Pureservice_BaseUrl": "https://instancename.pureservice.com/agent/api/",
     "Pureservice_ApiKey": "your-api-key",
     "Pureservice_Max_Requests_Per_Minute": "100",
+    "Pureservice_Wait_When_Max_Requests_Reached": "true",
+    "Pureservice_Wait_Seconds": "20",
     "AZURE_CLIENT_ID": "azure-client-id",
     "AZURE_CLIENT_SECRET": "azure-client-secret",
     "AZURE_TENANT_ID": "azure-tenant-id",
@@ -73,3 +75,12 @@ Create a `local.settings.json` file in the `pureservice-dotnet` folder with the 
   }
 }
 ```
+
+### Explanation of settings and defaults
+
+If `Pureservice_Wait_When_Max_Requests_Reached` is set to:<br />
+- **False**: The function will skip the request (Create, Update or Disable) and continue to next user until requests can be made again
+- **True**: The function will wait `Pureservice_Wait_Seconds` seconds and continue where it left off
+- Not set: Default is **False**
+
+If `Pureservice_Wait_Seconds` is not set, default is **0** seconds

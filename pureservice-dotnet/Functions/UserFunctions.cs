@@ -207,11 +207,20 @@ public class UserFunctions
         SynchronizationResult synchronizationResult)
     {
         const int expectedRequestCount = 5; // PhysicalAddress, PhoneNumber, EmailAddress, User, DepartmentAndLocation (maybe)
-        var (needsToWait, requestCountLastMinute) = _pureserviceCaller.NeedsToWait(expectedRequestCount);
+        var (needsToWait, requestCountLastMinute, secondsToWait) = _pureserviceCaller.NeedsToWait(expectedRequestCount);
         if (needsToWait)
         {
-            _logger.LogWarning("Throttling in Pureservice API detected. Skipping user creation this sweep. Request count last minute: {RequestCountLastMinute}", requestCountLastMinute);
-            return;
+            if (!secondsToWait.HasValue)
+            {
+                _logger.LogWarning("Throttling in Pureservice API detected. Skipping user creation this sweep. Request count last minute: {RequestCountLastMinute}", requestCountLastMinute);
+                return;
+            }
+            
+            _logger.LogWarning("Throttling in Pureservice API detected. Waiting {SecondsToWait} seconds before creating user. Request count last minute: {RequestCountLastMinute}",
+                secondsToWait.Value, requestCountLastMinute);
+            _logger.LogInformation("SynchronizationResult so far: {@SynchronizationResult}", synchronizationResult);
+            
+            await Task.Delay(secondsToWait.Value * 1000);
         }
         
         synchronizationResult.UserHandledCount++;
@@ -269,11 +278,20 @@ public class UserFunctions
         User? pureserviceManagerUser, List<Company> companies, List<CompanyDepartment> companyDepartments, List<CompanyLocation> companyLocations, SynchronizationResult synchronizationResult)
     {
         const int expectedRequestCount = 5; // BasicProperties, CompanyProperties, EmailAddress, (PhoneNumber (maybe add) and PhoneNumber (maybe set as default)), (PhoneNumber (maybe update) and PhoneNumber (maybe set as default)), PhoneNumber (maybe update) 
-        var (needsToWait, requestCountLastMinute) = _pureserviceCaller.NeedsToWait(expectedRequestCount);
+        var (needsToWait, requestCountLastMinute, secondsToWait) = _pureserviceCaller.NeedsToWait(expectedRequestCount);
         if (needsToWait)
         {
-            _logger.LogWarning("Throttling in Pureservice API detected. Skipping user update this sweep. Request count last minute: {RequestCountLastMinute}", requestCountLastMinute);
-            return;
+            if (!secondsToWait.HasValue)
+            {
+                _logger.LogWarning("Throttling in Pureservice API detected. Skipping user update this sweep. Request count last minute: {RequestCountLastMinute}", requestCountLastMinute);
+                return;
+            }
+            
+            _logger.LogWarning("Throttling in Pureservice API detected. Waiting {SecondsToWait} seconds before updating user. Request count last minute: {RequestCountLastMinute}",
+                secondsToWait.Value, requestCountLastMinute);
+            _logger.LogInformation("SynchronizationResult so far: {@SynchronizationResult}", synchronizationResult);
+            
+            await Task.Delay(secondsToWait.Value * 1000);
         }
         
         synchronizationResult.UserHandledCount++;

@@ -14,7 +14,7 @@ namespace pureservice_dotnet.Services;
 public interface IPureserviceCaller
 {
     Task<T?> GetAsync<T>(string endpoint) where T : class;
-    (bool needsToWait, int requestCountLastMinute) NeedsToWait(int expectedRequestCount);
+    (bool needsToWait, int requestCountLastMinute, int? secondsToWait) NeedsToWait(int expectedRequestCount);
     Task<T?> PatchAsync<T>(string endpoint, object payload) where T : class;
     Task<bool> PatchAsync(string endpoint, object payload);
     Task<T?> PostAsync<T>(string endpoint, object payload) where T : class;
@@ -28,6 +28,9 @@ public class PureserviceCaller : IPureserviceCaller
     private readonly IMetricsService _metricsService;
 
     private readonly int _maxRequestsPerMinute;
+    private readonly bool _waitWhenMaxRequestsReached;
+    private readonly int _waitSeconds;
+    
     private readonly List<DateTime> _requestTimestamps;
 
     private readonly HttpClient _client;
@@ -46,6 +49,8 @@ public class PureserviceCaller : IPureserviceCaller
         _metricsService = metricsService;
         
         _maxRequestsPerMinute = configuration.GetValue<int?>("Pureservice_Max_Requests_Per_Minute") ?? throw new InvalidOperationException("Pureservice_Max_Requests_Per_Minute is not configured");
+        _waitWhenMaxRequestsReached = configuration.GetValue<bool?>("Pureservice_Wait_When_Max_Requests_Reached") ?? false;
+        _waitSeconds = configuration.GetValue<int?>("Pureservice_Wait_Seconds") ?? 0;
         
         _requestTimestamps = [];
 
@@ -122,13 +127,15 @@ public class PureserviceCaller : IPureserviceCaller
         }
     }
 
-    public (bool needsToWait, int requestCountLastMinute) NeedsToWait(int expectedRequestCount)
+    public (bool needsToWait, int requestCountLastMinute, int? secondsToWait) NeedsToWait(int expectedRequestCount)
     {
         var first = DateTime.Now.AddMinutes(-1);
         var last = DateTime.Now;
         var requestCountLastMinute = _requestTimestamps.Count(dt => dt >= first && dt <= last);
         
-        return (requestCountLastMinute + expectedRequestCount > _maxRequestsPerMinute, requestCountLastMinute);
+        return (requestCountLastMinute + expectedRequestCount > _maxRequestsPerMinute,
+            requestCountLastMinute,
+            _waitWhenMaxRequestsReached ? _waitSeconds : null);
     }
     
     public async Task<T?> PatchAsync<T>(string endpoint, object payload) where T : class
