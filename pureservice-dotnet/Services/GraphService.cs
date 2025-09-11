@@ -20,8 +20,10 @@ public class GraphService : IGraphService
 {
     private readonly GraphServiceClient _graphClient;
 
-    private readonly string _employeeUserDomain;
+    private readonly string _employeeAutoUsersOu;
+    private readonly string _employeeAutoDisabledUsersOu;
     private readonly string _studentUserDomain;
+    private readonly string _studentJobTitle;
     
     private readonly string[] _userProperties =
     [
@@ -44,8 +46,10 @@ public class GraphService : IGraphService
     {
         _graphClient = authenticationService.CreateGraphClient();
         
-        _employeeUserDomain = configuration["Employee_Email_Domain"] ?? throw new InvalidOperationException("Employee_Email_Domain not configured");
+        _employeeAutoUsersOu = configuration["Employee_Auto_Users_OU"] ?? throw new InvalidOperationException("Employee_Auto_Users_OU not configured");
+        _employeeAutoDisabledUsersOu = configuration["Employee_Auto_Disabled_Users_OU"] ?? throw new InvalidOperationException("Employee_Auto_Disabled_Users_OU not configured");
         _studentUserDomain = configuration["Student_Email_Domain"] ?? throw new InvalidOperationException("Student_Email_Domain not configured");
+        _studentJobTitle = configuration["Student_Job_Title"] ?? throw new InvalidOperationException("Student_Job_Title not configured");
     }
 
     public async Task<List<User>> GetEmployees()
@@ -54,7 +58,7 @@ public class GraphService : IGraphService
 
         // NOTE: When $expand is used, Microsoft has a hard limit of 100 users per page. Adding $top=999 has no effect!
         var allEmployees = await GetUsersPage(
-            $"https://graph.microsoft.com/v1.0/users?$filter=endsWith(userPrincipalName, '{_employeeUserDomain}')&$count=true&$select={string.Join(",", _userProperties)}&$expand=manager($levels=1;$select=id)&$top=999");
+            $"https://graph.microsoft.com/v1.0/users?$filter=endsWith(onPremisesDistinguishedName, '{_employeeAutoUsersOu}') OR endsWith(onPremisesDistinguishedName, '{_employeeAutoDisabledUsersOu}')&$count=true&$select={string.Join(",", _userProperties)}&$expand=manager($levels=1;$select=id)&$top=999");
 
         allUsers.AddRange(allEmployees.Value ?? []);
         
@@ -72,7 +76,7 @@ public class GraphService : IGraphService
         List<User> allUsers = [];
         
         var allEmployees = await GetUsersPage(
-            $"https://graph.microsoft.com/v1.0/users?$filter=endsWith(userPrincipalName, '{_studentUserDomain}')&$count=true&$select={string.Join(",", _userProperties)}&$top=999");
+            $"https://graph.microsoft.com/v1.0/users?$filter=endsWith(userPrincipalName, '{_studentUserDomain}') AND jobTitle eq '{_studentJobTitle}'&$count=true&$select={string.Join(",", _userProperties)}&$top=999");
 
         allUsers.AddRange(allEmployees.Value ?? []);
         
