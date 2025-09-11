@@ -252,7 +252,6 @@ public class UserFunctions
             return;
         }
 
-        // NOTE: Create new user with ids for above created entities
         var pureserviceUser = await _pureserviceUserService.CreateNewUser(entraUser, pureserviceManagerUser?.Id, companyId, physicalAddressResult.Id, pureservicePhoneNumber.Id, pureserviceEmailAddress.Id);
 
         if (pureserviceUser is null)
@@ -261,8 +260,6 @@ public class UserFunctions
             return;
         }
 
-        // NOTE: Update department and location
-        // TODO: Check department and location separately and update only if needed
         if ((department is not null || location is not null) && await _pureserviceUserService.UpdateDepartmentAndLocation(pureserviceUser.Id, department?.Id, location?.Id))
         {
             synchronizationResult.UserCreatedCount++;
