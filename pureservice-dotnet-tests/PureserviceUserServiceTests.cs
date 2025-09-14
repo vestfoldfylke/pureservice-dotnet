@@ -228,14 +228,10 @@ public class PureserviceUserServiceTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void NeedsCompanyUpdate_Should_Return_Empty_List_When_Update_Not_Needed(bool hasCompany)
+    public void NeedsCompanyUpdate_Should_Return_Null_When_Company_Update_Not_Needed(bool hasCompany)
     {
         const int companyId = 43;
         const string companyName = "Baz";
-        const int departmentId = 44;
-        const string departmentName = "IT";
-        const int locationId = 45;
-        const string locationName = "Oslo";
         
         var pureserviceUser = new User
         {
@@ -246,10 +242,10 @@ public class PureserviceUserServiceTests
             ManagerId = null,
             Disabled = false,
             CompanyId = hasCompany ? companyId : null,
-            CompanyDepartmentId = hasCompany ? departmentId : null,
-            CompanyLocationId = hasCompany ? locationId : null,
-            Department = departmentName,
-            Location = locationName,
+            CompanyDepartmentId = null,
+            CompanyLocationId = null,
+            Department = null,
+            Location = null,
             Links = new Links(),
             Created = DateTime.Now,
             CreatedById = 1,
@@ -264,88 +260,6 @@ public class PureserviceUserServiceTests
             JobTitle = "Biz",
             AccountEnabled = true,
             CompanyName = hasCompany ? companyName : null,
-            OfficeLocation = hasCompany ? locationName : null,
-            Department = hasCompany ? departmentName : null
-        };
-
-        var companies = new List<Company>
-        {
-            new Company
-            {
-                Id = companyId,
-                Name = companyName,
-                Links = new Links
-                {
-                    Departments = new LinkIds([100, departmentId], "departments"),
-                    Locations = new LinkIds([101, locationId], "locations")
-                }
-            }
-        };
-        
-        var departments = new List<CompanyDepartment>
-        {
-            new CompanyDepartment
-            {
-                Id = departmentId,
-                CompanyId = companyId,
-                Name = departmentName
-            }
-        };
-        
-        var locations = new List<CompanyLocation>
-        {
-            new CompanyLocation
-            {
-                Id = locationId,
-                CompanyId = companyId,
-                Name = locationName
-            }
-        };
-        
-        // all properties are equal, so no update needed
-        var result = _service.NeedsCompanyUpdate(pureserviceUser, entraUser, companies, departments, locations);
-        Assert.Empty(result);
-    }
-    
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void NeedsCompanyUpdate_Should_Return_NonEmpty_List_When_Company_Is_Empty_And_Needs_Update(bool hasCompany)
-    {
-        const int companyId = 43;
-        const string companyName = "Baz";
-        const int departmentId = 44;
-        const string departmentName = "IT";
-        const int locationId = 45;
-        const string locationName = "Oslo";
-        
-        var pureserviceUser = new User
-        {
-            Id = 42,
-            FirstName = "Foo",
-            LastName = "Bar",
-            Title = "Biz",
-            ManagerId = null,
-            Disabled = false,
-            CompanyId = hasCompany ? companyId : null,
-            CompanyDepartmentId = null,
-            CompanyLocationId = null,
-            Department = departmentName,
-            Location = locationName,
-            Links = new Links(),
-            Created = DateTime.Now,
-            CreatedById = 1,
-            ManagerFullName = null
-        };
-
-        var entraUser = new Microsoft.Graph.Models.User
-        {
-            GivenName = "Foo",
-            Surname = "Bar",
-            DisplayName = "Foo Bar",
-            JobTitle = "Biz",
-            AccountEnabled = true,
-            CompanyName = hasCompany ? null : companyName,
             OfficeLocation = null,
             Department = null
         };
@@ -358,57 +272,26 @@ public class PureserviceUserServiceTests
                 Name = companyName,
                 Links = new Links
                 {
-                    Departments = new LinkIds([100, departmentId], "departments"),
-                    Locations = new LinkIds([101, locationId], "locations")
+                    Departments = new LinkIds([100], "departments"),
+                    Locations = new LinkIds([101], "locations")
                 }
             }
         };
         
-        var departments = new List<CompanyDepartment>
-        {
-            new CompanyDepartment
-            {
-                Id = departmentId,
-                CompanyId = companyId,
-                Name = departmentName
-            }
-        };
-        
-        var locations = new List<CompanyLocation>
-        {
-            new CompanyLocation
-            {
-                Id = locationId,
-                CompanyId = companyId,
-                Name = locationName
-            }
-        };
-        
-        // all properties are equal, so no update needed
-        var result = _service.NeedsCompanyUpdate(pureserviceUser, entraUser, companies, departments, locations);
-        Assert.Single(result);
-        
-        Assert.Equal(("companyId", hasCompany ? null : companyId), result[0]);
+        var result = _service.NeedsCompanyUpdate(pureserviceUser, entraUser, companies);
+        Assert.Null(result);
     }
     
-    [Fact]
-    public void NeedsCompanyUpdate_Should_Return_NonEmpty_List_When_Company_Needs_Change_With_Department_And_Location()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void NeedsCompanyUpdate_Should_Return_Company_When_Company_Update_Needed_With_Existing_Company(bool hasCompany)
     {
-        // current state
         const int companyId = 43;
         const string companyName = "Baz";
-        const int departmentId = 44;
-        const string departmentName = "IT";
-        const int locationId = 45;
-        const string locationName = "Oslo";
         
-        // new state
-        const int newCompanyId = 46;
-        const string newCompanyName = "Qux";
-        const int newDepartmentId = 47;
-        const string newDepartmentName = "HR";
-        const int newLocationId = 48;
-        const string newLocationName = "Bergen";
+        const int newCompanyId = 44;
+        const string newCompanyName = "Boz";
         
         var pureserviceUser = new User
         {
@@ -418,11 +301,11 @@ public class PureserviceUserServiceTests
             Title = "Biz",
             ManagerId = null,
             Disabled = false,
-            CompanyId = companyId,
-            CompanyDepartmentId = departmentId,
-            CompanyLocationId = locationId,
-            Department = departmentName,
-            Location = locationName,
+            CompanyId = hasCompany ? companyId : null,
+            CompanyDepartmentId = null,
+            CompanyLocationId = null,
+            Department = null,
+            Location = null,
             Links = new Links(),
             Created = DateTime.Now,
             CreatedById = 1,
@@ -437,8 +320,8 @@ public class PureserviceUserServiceTests
             JobTitle = "Biz",
             AccountEnabled = true,
             CompanyName = newCompanyName,
-            OfficeLocation = newLocationName,
-            Department = newDepartmentName
+            OfficeLocation = null,
+            Department = null
         };
 
         var companies = new List<Company>
@@ -449,8 +332,8 @@ public class PureserviceUserServiceTests
                 Name = companyName,
                 Links = new Links
                 {
-                    Departments = new LinkIds([100, departmentId], "departments"),
-                    Locations = new LinkIds([101, locationId], "locations")
+                    Departments = new LinkIds([100], "departments"),
+                    Locations = new LinkIds([101], "locations")
                 }
             },
             new Company
@@ -459,71 +342,92 @@ public class PureserviceUserServiceTests
                 Name = newCompanyName,
                 Links = new Links
                 {
-                    Departments = new LinkIds([100, newDepartmentId], "departments"),
-                    Locations = new LinkIds([101, newLocationId], "locations")
+                    Departments = new LinkIds([102], "departments"),
+                    Locations = new LinkIds([103], "locations")
                 }
             }
         };
         
-        var departments = new List<CompanyDepartment>
-        {
-            new CompanyDepartment
-            {
-                Id = departmentId,
-                CompanyId = companyId,
-                Name = departmentName
-            },
-            new CompanyDepartment
-            {
-                Id = newDepartmentId,
-                CompanyId = newCompanyId,
-                Name = newDepartmentName
-            }
-        };
-        
-        var locations = new List<CompanyLocation>
-        {
-            new CompanyLocation
-            {
-                Id = locationId,
-                CompanyId = companyId,
-                Name = locationName
-            },
-            new CompanyLocation
-            {
-                Id = newLocationId,
-                CompanyId = newCompanyId,
-                Name = newLocationName
-            }
-        };
-        
-        // all properties are equal, so no update needed
-        var result = _service.NeedsCompanyUpdate(pureserviceUser, entraUser, companies, departments, locations);
-        Assert.Equal(3, result.Count);
-        
-        Assert.Equal(("companyId", newCompanyId), result[0]);
-        Assert.Equal(("companyDepartmentId", newDepartmentId), result[1]);
-        Assert.Equal(("companyLocationId", newLocationId), result[2]);
+        var result = _service.NeedsCompanyUpdate(pureserviceUser, entraUser, companies);
+        Assert.NotNull(result);
+        Assert.Equal("companyId", result.PropertyName);
+        Assert.Equal(newCompanyId, result.Id);
+        Assert.Null(result.NameToCreate);
     }
     
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void NeedsCompanyUpdate_Should_Return_NonEmpty_List_When_Department_Or_Location_Needs_Update(bool departmentNeedsUpdate)
+    public void NeedsCompanyUpdate_Should_Return_CompanyUpdateItem_When_Company_Update_Needed_With_NonExisting_Company(bool hasCompany)
     {
-        // current state
         const int companyId = 43;
         const string companyName = "Baz";
+        
+        const string newCompanyName = "Boz";
+        
+        var pureserviceUser = new User
+        {
+            Id = 42,
+            FirstName = "Foo",
+            LastName = "Bar",
+            Title = "Biz",
+            ManagerId = null,
+            Disabled = false,
+            CompanyId = hasCompany ? companyId : null,
+            CompanyDepartmentId = null,
+            CompanyLocationId = null,
+            Department = null,
+            Location = null,
+            Links = new Links(),
+            Created = DateTime.Now,
+            CreatedById = 1,
+            ManagerFullName = null
+        };
+
+        var entraUser = new Microsoft.Graph.Models.User
+        {
+            GivenName = "Foo",
+            Surname = "Bar",
+            DisplayName = "Foo Bar",
+            JobTitle = "Biz",
+            AccountEnabled = true,
+            CompanyName = newCompanyName,
+            OfficeLocation = null,
+            Department = null
+        };
+
+        var companies = new List<Company>
+        {
+            new Company
+            {
+                Id = companyId,
+                Name = companyName,
+                Links = new Links
+                {
+                    Departments = new LinkIds([100], "departments"),
+                    Locations = new LinkIds([101], "locations")
+                }
+            }
+        };
+        
+        var result = _service.NeedsCompanyUpdate(pureserviceUser, entraUser, companies);
+        Assert.NotNull(result);
+        Assert.Equal("companyId", result.PropertyName);
+        Assert.Null(result.Id);
+        Assert.Equal(newCompanyName, result.NameToCreate);
+    }
+    
+    // NeedsDepartmentUpdate
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void NeedsDepartmentUpdate_Should_Return_Null_When_Department_Update_Not_Needed(bool hasDepartment)
+    {
+        const int companyId = 43;
+        const string companyName = "Baz";
+        
         const int departmentId = 44;
         const string departmentName = "IT";
-        const int locationId = 45;
-        const string locationName = "Oslo";
-        
-        // new state
-        const int newDepartmentId = 46;
-        const string newDepartmentName = "HR";
-        const int newLocationId = 47;
-        const string newLocationName = "Bergen";
         
         var pureserviceUser = new User
         {
@@ -534,10 +438,10 @@ public class PureserviceUserServiceTests
             ManagerId = null,
             Disabled = false,
             CompanyId = companyId,
-            CompanyDepartmentId = departmentId,
-            CompanyLocationId = locationId,
-            Department = departmentName,
-            Location = locationName,
+            CompanyDepartmentId = hasDepartment ? departmentId : null,
+            CompanyLocationId = null,
+            Department = null,
+            Location = null,
             Links = new Links(),
             Created = DateTime.Now,
             CreatedById = 1,
@@ -552,8 +456,83 @@ public class PureserviceUserServiceTests
             JobTitle = "Biz",
             AccountEnabled = true,
             CompanyName = companyName,
-            OfficeLocation = departmentNeedsUpdate ? locationName : newLocationName,
-            Department = departmentNeedsUpdate ? newDepartmentName : departmentName
+            OfficeLocation = null,
+            Department = hasDepartment ? departmentName : null,
+        };
+
+        var companies = new List<Company>
+        {
+            new Company
+            {
+                Id = companyId,
+                Name = companyName,
+                Links = new Links
+                {
+                    Departments = new LinkIds([100, departmentId], "departments"),
+                    Locations = new LinkIds([101], "locations")
+                }
+            }
+        };
+
+        var departments = new List<CompanyDepartment>
+        {
+            new CompanyDepartment
+            {
+                Id = departmentId,
+                CompanyId = companyId,
+                Created = DateTime.Now,
+                CreatedById = 1,
+                Name = departmentName
+            }
+        };
+        
+        var result = _service.NeedsDepartmentUpdate(pureserviceUser, entraUser, companies, departments);
+        Assert.Null(result);
+    }
+    
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void NeedsDepartmentUpdate_Should_Return_Department_When_Department_Update_Needed_With_Existing_Department(bool hasDepartment)
+    {
+        const int companyId = 43;
+        const string companyName = "Baz";
+        
+        const int departmentId = 44;
+        const string departmentName = "IT";
+        
+        const int newDepartmentId = 45;
+        const string newDepartmentName = "Boz";
+        
+        var pureserviceUser = new User
+        {
+            Id = 42,
+            FirstName = "Foo",
+            LastName = "Bar",
+            Title = "Biz",
+            ManagerId = null,
+            Disabled = false,
+            CompanyId = companyId,
+            CompanyDepartmentId = hasDepartment ? departmentId : null,
+            CompanyLocationId = null,
+            Department = null,
+            Location = null,
+            Links = new Links(),
+            Created = DateTime.Now,
+            CreatedById = 1,
+            ManagerFullName = null
+        };
+
+        var entraUser = new Microsoft.Graph.Models.User
+        {
+            GivenName = "Foo",
+            Surname = "Bar",
+            DisplayName = "Foo Bar",
+            JobTitle = "Biz",
+            AccountEnabled = true,
+            CompanyName = companyName,
+            OfficeLocation = null,
+            Department = newDepartmentName
         };
 
         var companies = new List<Company>
@@ -565,54 +544,358 @@ public class PureserviceUserServiceTests
                 Links = new Links
                 {
                     Departments = new LinkIds([100, departmentId, newDepartmentId], "departments"),
-                    Locations = new LinkIds([101, locationId, newLocationId], "locations")
+                    Locations = new LinkIds([101], "locations")
                 }
             }
         };
-        
+
         var departments = new List<CompanyDepartment>
         {
             new CompanyDepartment
             {
                 Id = departmentId,
                 CompanyId = companyId,
+                Created = DateTime.Now,
+                CreatedById = 1,
                 Name = departmentName
             },
             new CompanyDepartment
             {
                 Id = newDepartmentId,
                 CompanyId = companyId,
+                Created = DateTime.Now,
+                CreatedById = 1,
                 Name = newDepartmentName
             }
         };
         
+        var result = _service.NeedsDepartmentUpdate(pureserviceUser, entraUser, companies, departments);
+        Assert.NotNull(result);
+        Assert.Equal("companyDepartmentId", result.PropertyName);
+        Assert.Equal(newDepartmentId, result.Id);
+        Assert.Null(result.NameToCreate);
+    }
+    
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void NeedsDepartmentUpdate_Should_Return_CompanyUpdateItem_When_Department_Update_Needed_With_NonExisting_Department(bool hasDepartment)
+    {
+        const int companyId = 43;
+        const string companyName = "Baz";
+        
+        const int departmentId = 44;
+        const string departmentName = "IT";
+        
+        const string newDepartmentName = "Boz";
+        
+        var pureserviceUser = new User
+        {
+            Id = 42,
+            FirstName = "Foo",
+            LastName = "Bar",
+            Title = "Biz",
+            ManagerId = null,
+            Disabled = false,
+            CompanyId = companyId,
+            CompanyDepartmentId = hasDepartment ? departmentId : null,
+            CompanyLocationId = null,
+            Department = null,
+            Location = null,
+            Links = new Links(),
+            Created = DateTime.Now,
+            CreatedById = 1,
+            ManagerFullName = null
+        };
+
+        var entraUser = new Microsoft.Graph.Models.User
+        {
+            GivenName = "Foo",
+            Surname = "Bar",
+            DisplayName = "Foo Bar",
+            JobTitle = "Biz",
+            AccountEnabled = true,
+            CompanyName = companyName,
+            OfficeLocation = null,
+            Department = newDepartmentName
+        };
+
+        var companies = new List<Company>
+        {
+            new Company
+            {
+                Id = companyId,
+                Name = companyName,
+                Links = new Links
+                {
+                    Departments = new LinkIds([100, departmentId], "departments"),
+                    Locations = new LinkIds([101], "locations")
+                }
+            }
+        };
+
+        var departments = new List<CompanyDepartment>
+        {
+            new CompanyDepartment
+            {
+                Id = departmentId,
+                CompanyId = companyId,
+                Created = DateTime.Now,
+                CreatedById = 1,
+                Name = departmentName
+            }
+        };
+        
+        var result = _service.NeedsDepartmentUpdate(pureserviceUser, entraUser, companies, departments);
+        Assert.NotNull(result);
+        Assert.Equal("companyDepartmentId", result.PropertyName);
+        Assert.Null(result.Id);
+        Assert.Equal(newDepartmentName, result.NameToCreate);
+    }
+    
+    // NeedsLocationUpdate
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void NeedsLocationUpdate_Should_Return_Null_When_Location_Update_Not_Needed(bool hasLocation)
+    {
+        const int companyId = 43;
+        const string companyName = "Baz";
+        
+        const int departmentId = 44;
+        const string departmentName = "IT";
+
+        const int locationId = 45;
+        const string locationName = "Boz";
+        
+        var pureserviceUser = new User
+        {
+            Id = 42,
+            FirstName = "Foo",
+            LastName = "Bar",
+            Title = "Biz",
+            ManagerId = null,
+            Disabled = false,
+            CompanyId = companyId,
+            CompanyDepartmentId = departmentId,
+            CompanyLocationId = hasLocation ? locationId : null,
+            Department = null,
+            Location = null,
+            Links = new Links(),
+            Created = DateTime.Now,
+            CreatedById = 1,
+            ManagerFullName = null
+        };
+
+        var entraUser = new Microsoft.Graph.Models.User
+        {
+            GivenName = "Foo",
+            Surname = "Bar",
+            DisplayName = "Foo Bar",
+            JobTitle = "Biz",
+            AccountEnabled = true,
+            CompanyName = companyName,
+            OfficeLocation = hasLocation ? locationName : null,
+            Department = departmentName,
+        };
+
+        var companies = new List<Company>
+        {
+            new Company
+            {
+                Id = companyId,
+                Name = companyName,
+                Links = new Links
+                {
+                    Departments = new LinkIds([100, departmentId], "departments"),
+                    Locations = new LinkIds([101, locationId], "locations")
+                }
+            }
+        };
+
         var locations = new List<CompanyLocation>
         {
             new CompanyLocation
             {
                 Id = locationId,
                 CompanyId = companyId,
+                Created = DateTime.Now,
+                CreatedById = 1,
+                Name = locationName
+            }
+        };
+        
+        var result = _service.NeedsLocationUpdate(pureserviceUser, entraUser, companies, locations);
+        Assert.Null(result);
+    }
+    
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void NeedsLocationUpdate_Should_Return_Location_When_Location_Update_Needed_With_Existing_Location(bool hasLocation)
+    {
+        const int companyId = 43;
+        const string companyName = "Baz";
+        
+        const int departmentId = 44;
+        const string departmentName = "IT";
+
+        const int locationId = 45;
+        const string locationName = "Boz";
+        
+        const int newLocationId = 46;
+        const string newLocationName = "Buz";
+        
+        var pureserviceUser = new User
+        {
+            Id = 42,
+            FirstName = "Foo",
+            LastName = "Bar",
+            Title = "Biz",
+            ManagerId = null,
+            Disabled = false,
+            CompanyId = companyId,
+            CompanyDepartmentId = departmentId,
+            CompanyLocationId = hasLocation ? locationId : null,
+            Department = null,
+            Location = null,
+            Links = new Links(),
+            Created = DateTime.Now,
+            CreatedById = 1,
+            ManagerFullName = null
+        };
+
+        var entraUser = new Microsoft.Graph.Models.User
+        {
+            GivenName = "Foo",
+            Surname = "Bar",
+            DisplayName = "Foo Bar",
+            JobTitle = "Biz",
+            AccountEnabled = true,
+            CompanyName = companyName,
+            OfficeLocation = newLocationName,
+            Department = departmentName
+        };
+
+        var companies = new List<Company>
+        {
+            new Company
+            {
+                Id = companyId,
+                Name = companyName,
+                Links = new Links
+                {
+                    Departments = new LinkIds([100, departmentId], "departments"),
+                    Locations = new LinkIds([101, locationId, newLocationId], "locations")
+                }
+            }
+        };
+
+        var locations = new List<CompanyLocation>
+        {
+            new CompanyLocation
+            {
+                Id = locationId,
+                CompanyId = companyId,
+                Created = DateTime.Now,
+                CreatedById = 1,
                 Name = locationName
             },
             new CompanyLocation
             {
                 Id = newLocationId,
                 CompanyId = companyId,
+                Created = DateTime.Now,
+                CreatedById = 1,
                 Name = newLocationName
             }
         };
         
-        // all properties are equal, so no update needed
-        var result = _service.NeedsCompanyUpdate(pureserviceUser, entraUser, companies, departments, locations);
-        Assert.Single(result);
+        var result = _service.NeedsLocationUpdate(pureserviceUser, entraUser, companies, locations);
+        Assert.NotNull(result);
+        Assert.Equal("companyLocationId", result.PropertyName);
+        Assert.Equal(newLocationId, result.Id);
+        Assert.Null(result.NameToCreate);
+    }
+    
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void NeedsLocationUpdate_Should_Return_CompanyUpdateItem_When_Location_Update_Needed_With_NonExisting_Location(bool hasLocation)
+    {
+        const int companyId = 43;
+        const string companyName = "Baz";
         
-        if (departmentNeedsUpdate)
+        const int departmentId = 44;
+        const string departmentName = "IT";
+
+        const int locationId = 45;
+        const string locationName = "Boz";
+        
+        const string newLocationName = "Buz";
+        
+        var pureserviceUser = new User
         {
-            Assert.Equal(("companyDepartmentId", newDepartmentId), result[0]);
-            return;
-        }
+            Id = 42,
+            FirstName = "Foo",
+            LastName = "Bar",
+            Title = "Biz",
+            ManagerId = null,
+            Disabled = false,
+            CompanyId = companyId,
+            CompanyDepartmentId = departmentId,
+            CompanyLocationId = hasLocation ? locationId : null,
+            Department = null,
+            Location = null,
+            Links = new Links(),
+            Created = DateTime.Now,
+            CreatedById = 1,
+            ManagerFullName = null
+        };
+
+        var entraUser = new Microsoft.Graph.Models.User
+        {
+            GivenName = "Foo",
+            Surname = "Bar",
+            DisplayName = "Foo Bar",
+            JobTitle = "Biz",
+            AccountEnabled = true,
+            CompanyName = companyName,
+            OfficeLocation = newLocationName,
+            Department = departmentName
+        };
+
+        var companies = new List<Company>
+        {
+            new Company
+            {
+                Id = companyId,
+                Name = companyName,
+                Links = new Links
+                {
+                    Departments = new LinkIds([100, departmentId], "departments"),
+                    Locations = new LinkIds([101, locationId], "locations")
+                }
+            }
+        };
+
+        var locations = new List<CompanyLocation>
+        {
+            new CompanyLocation
+            {
+                Id = locationId,
+                CompanyId = companyId,
+                Created = DateTime.Now,
+                CreatedById = 1,
+                Name = locationName
+            }
+        };
         
-        Assert.Equal(("companyLocationId", newLocationId), result[0]);
+        var result = _service.NeedsLocationUpdate(pureserviceUser, entraUser, companies, locations);
+        Assert.NotNull(result);
+        Assert.Equal("companyLocationId", result.PropertyName);
+        Assert.Null(result.Id);
+        Assert.Equal(newLocationName, result.NameToCreate);
     }
     
     // UpdateBasicProperties
@@ -655,30 +938,26 @@ public class PureserviceUserServiceTests
     public async Task UpdateCompanyProperties_Should_Return_False_When_Update_Is_Not_Needed()
     {
         const int userId = 42;
-        var updateProperties = new List<(string PropertyName, int? Id)>();
+        var updateProperties = new List<CompanyUpdateItem>();
         
         var result = await _service.UpdateCompanyProperties(userId, updateProperties);
         Assert.False(result);
     }
-    
+
     [Theory]
-    [InlineData(null, 45, 46)]
-    [InlineData(44, 45, 46)]
-    [InlineData(44, null, 46)]
-    [InlineData(44, 45, null)]
-    [InlineData(null, null, null)]
-    public async Task UpdateCompanyProperties_Should_Return_True_When_Update_Is_Needed(int? companyId, int? departmentId = null, int? locationId = null)
+    [InlineData("companyId", 44)]
+    [InlineData("companyDepartmentId", 45)]
+    [InlineData("companyLocationId", 46)]
+    public async Task UpdateCompanyProperties_Should_Return_True_When_Update_Is_Needed(string propertyName, int id)
     {
         const int userId = 42;
         var updateProperties =
-            new List<(string PropertyName, int? Id)>
+            new List<CompanyUpdateItem>
             {
-                ("companyId", companyId),
-                ("companyDepartmentId", departmentId),
-                ("companyLocationId", locationId)
+                new CompanyUpdateItem(propertyName, id)
             };
         
-        _pureserviceCaller.PatchAsync(Arg.Is<string>($"user/{userId}"), Arg.Any<Dictionary<string, object?>>())
+        _pureserviceCaller.PatchAsync(Arg.Is<string>($"user/{userId}"), Arg.Any<Dictionary<string, int>>())
             .Returns(true);
         
         var result = await _service.UpdateCompanyProperties(userId, updateProperties);

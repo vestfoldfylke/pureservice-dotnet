@@ -17,13 +17,13 @@ public interface IPureserviceUserService
     Task<UserList> GetUser(int userId, string[]? entities = null);
     Task<UserList> GetUsers(string[]? entities = null, int start = 0, int limit = 500, bool includeSystemUsers = false, bool includeInactiveUsers = false);
     List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))> NeedsBasicUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser = null);
-
-    List<(string propertyName, int? id)> NeedsCompanyUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser,
-        List<Company> companies, List<CompanyDepartment> companyDepartments, List<CompanyLocation> companyLocations);
+    CompanyUpdateItem? NeedsCompanyUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies);
+    CompanyUpdateItem? NeedsDepartmentUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies, List<CompanyDepartment> companyDepartments);
+    CompanyUpdateItem? NeedsLocationUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies, List<CompanyLocation> companyLocations);
     Task<bool> RegisterPhoneNumberAsDefault(int userId, int phoneNumberId);
     Task<bool> UpdateBasicProperties(int userId,
         List<(string PropertyName, (string? StringValue, int? IntValue, bool? BoolValue) PropertyValue)> propertiesToUpdate);
-    Task<bool> UpdateCompanyProperties(int userId, List<(string PropertyName, int? Id)> propertiesToUpdate);
+    Task<bool> UpdateCompanyProperties(int userId, List<CompanyUpdateItem> propertiesToUpdate);
     Task<bool> UpdateDepartmentAndLocation(int userId, int? departmentId, int? locationId);
 }
 
@@ -242,30 +242,40 @@ public class PureserviceUserService : IPureserviceUserService
         return propertiesToUpdate;
     }
 
-    public List<(string propertyName, int? id)> NeedsCompanyUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies, List<CompanyDepartment> companyDepartments,
-        List<CompanyLocation> companyLocations)
+    public CompanyUpdateItem? NeedsCompanyUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies)
     {
-        List<(string propertyName, int? id)> propertiesToUpdate = [];
-        
-        var companyUpdate = GetCompany(pureserviceUser, entraUser, companies);
-        if (companyUpdate.Update)
+        var company = GetCompany(pureserviceUser, entraUser, companies);
+        return company.Update
+            ? new CompanyUpdateItem("companyId", company.Company?.Id, company.Name)
+            : null;
+    }
+    
+    public CompanyUpdateItem? NeedsDepartmentUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies, List<CompanyDepartment> companyDepartments)
+    {
+        var company = GetCompany(pureserviceUser, entraUser, companies);
+        if (company.Company is null)
         {
-            propertiesToUpdate.Add(("companyId", companyUpdate.Company?.Id));
+            return null;
         }
         
-        var department = GetDepartment(pureserviceUser, entraUser, companyDepartments, companyUpdate.Company);
-        if (department.Update)
+        var department = GetDepartment(pureserviceUser, entraUser, companyDepartments, company.Company);
+        return department.Update
+            ? new CompanyUpdateItem("companyDepartmentId", department.CompanyDepartment?.Id, department.Name)
+            : null;
+    }
+    
+    public CompanyUpdateItem? NeedsLocationUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies, List<CompanyLocation> companyLocations)
+    {
+        var company = GetCompany(pureserviceUser, entraUser, companies);
+        if (company.Company is null)
         {
-            propertiesToUpdate.Add(("companyDepartmentId", department.CompanyDepartment?.Id));
+            return null;
         }
         
-        var location = GetLocation(pureserviceUser, entraUser, companyLocations, companyUpdate.Company);
-        if (location.Update)
-        {
-            propertiesToUpdate.Add(("companyLocationId", location.CompanyLocation?.Id));
-        }
-        
-        return propertiesToUpdate;
+        var location = GetLocation(pureserviceUser, entraUser, companyLocations, company.Company);
+        return location.Update
+            ? new CompanyUpdateItem("companyLocationId", location.CompanyLocation?.Id, location.Name)
+            : null;
     }
     
     public async Task<bool> RegisterPhoneNumberAsDefault(int userId, int phoneNumberId)
@@ -343,7 +353,7 @@ public class PureserviceUserService : IPureserviceUserService
         return false;
     }
 
-    public async Task<bool> UpdateCompanyProperties(int userId, List<(string PropertyName, int? Id)> propertiesToUpdate)
+    public async Task<bool> UpdateCompanyProperties(int userId, List<CompanyUpdateItem> propertiesToUpdate)
     {
         var payload = new Dictionary<string, int?>();
 
@@ -407,7 +417,7 @@ public class PureserviceUserService : IPureserviceUserService
         return false;
     }
 
-    private (bool Update, Company? Company) GetCompany(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies)
+    private (bool Update, Company? Company, string? Name) GetCompany(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies)
     {
         var company = pureserviceUser.CompanyId.HasValue
             ? companies.Find(c => c.Id == pureserviceUser.CompanyId.Value)
@@ -421,20 +431,19 @@ public class PureserviceUserService : IPureserviceUserService
         {
             if (wantedCompany is not null)
             {
-                return (true, wantedCompany);
+                return (true, wantedCompany, null);
             }
             
             if (entraUser.CompanyName is null)
             {
                 // user has no company in Entra and should not have one in Pureservice
-                return (false, null);
+                return (false, null, null);
             }
             
             // user has a company in Entra, but we could not find it in Pureservice, so it needs to be created
-            _logger.LogInformation("Could not find CompanyName {CompanyName} which UserId {UserId} should have. It needs to be created", entraUser.CompanyName, pureserviceUser.Id);
+            _logger.LogInformation("Could not find CompanyName {CompanyName} in Pureservice which UserId {UserId} should have. It needs to be created", entraUser.CompanyName, pureserviceUser.Id);
             
-            // TODO: Needs to be created and added
-            return (true, null);
+            return (true, wantedCompany, entraUser.CompanyName);
         }
         
         // company is not null
@@ -442,31 +451,30 @@ public class PureserviceUserService : IPureserviceUserService
         {
             if (company.Id != wantedCompany.Id)
             {
-                return (true, wantedCompany);
+                return (true, wantedCompany, null);
             }
             
             _logger.LogDebug("UserId {UserId} has correct CompanyId {CompanyId}", pureserviceUser.Id, company.Id);
-            return (false, company);
+            return (false, company, null);
         }
         
         // company is not null and wantedCompany is null
         if (entraUser.CompanyName is null)
         {
             // user has no company in Entra and should not have one in Pureservice
-            return (true, null);
+            return (true, null, null);
         }
         
-        _logger.LogWarning("Could not find CompanyName {CompanyName} in Pureservice which UserId {UserId} should have. It needs to be created", entraUser.CompanyName, pureserviceUser.Id);
-            
-        // TODO: Needs to be created and added
-        return (true, null);
+        _logger.LogInformation("Could not find CompanyName {CompanyName} in Pureservice which UserId {UserId} should have. It needs to be created", entraUser.CompanyName, pureserviceUser.Id);
+        
+        return (true, wantedCompany, entraUser.CompanyName);
     }
 
-    private (bool Update, CompanyDepartment? CompanyDepartment) GetDepartment(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<CompanyDepartment> companyDepartments, Company? company)
+    private (bool Update, CompanyDepartment? CompanyDepartment, string? Name) GetDepartment(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<CompanyDepartment> companyDepartments, Company? company)
     {
         if (company is null)
         {
-            return (pureserviceUser.CompanyDepartmentId is not null, null);
+            return (pureserviceUser.CompanyDepartmentId is not null, null, null);
         }
         
         var department = pureserviceUser.CompanyDepartmentId.HasValue
@@ -482,21 +490,20 @@ public class PureserviceUserService : IPureserviceUserService
         {
             if (wantedDepartment is not null)
             {
-                return (true, wantedDepartment);
+                return (true, wantedDepartment, null);
             }
             
             if (entraUser.Department is null)
             {
                 // user has no department in Entra and should not have one in Pureservice
-                return (false, null);
+                return (false, null, null);
             }
             
             // user has a department in Entra, but we could not find it in Pureservice, so it needs to be created
             _logger.LogInformation("Could not find DepartmentName {DepartmentName} under CompanyId {CompanyId} which UserId {UserId} should have. It needs to be created",
                 entraUser.Department, company.Id, pureserviceUser.Id);
             
-            // TODO: Needs to be created and added??? HOW???
-            return (true, null);
+            return (true, wantedDepartment, entraUser.Department);
         }
         
         // department is not null
@@ -504,32 +511,31 @@ public class PureserviceUserService : IPureserviceUserService
         {
             if (department.Id != wantedDepartment.Id)
             {
-                return (true, wantedDepartment);
+                return (true, wantedDepartment, null);
             }
             
             _logger.LogDebug("UserId {UserId} has correct DepartmentId {DepartmentId} under CompanyId {CompanyId}", pureserviceUser.Id, department.Id, company.Id);
-            return (false, null);
+            return (false, null, null);
         }
         
         // department is not null and wantedDepartment is null
         if (entraUser.Department is null)
         {
             // user has no department in Entra and should not have one in Pureservice
-            return (true, null);
+            return (true, null, null);
         }
         
-        _logger.LogWarning("Could not find DepartmentName {DepartmentName} under CompanyId {CompanyId} which UserId {UserId} should have. It needs to be created",
+        _logger.LogInformation("Could not find DepartmentName {DepartmentName} under CompanyId {CompanyId} which UserId {UserId} should have. It needs to be created",
             entraUser.Department, company.Id, pureserviceUser.Id);
-            
-        // TODO: Needs to be created and added??? HOW???
-        return (true, null);
+        
+        return (true, wantedDepartment, entraUser.Department);
     }
     
-    private (bool Update, CompanyLocation? CompanyLocation) GetLocation(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<CompanyLocation> companyLocations, Company? company)
+    private (bool Update, CompanyLocation? CompanyLocation, string? Name) GetLocation(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<CompanyLocation> companyLocations, Company? company)
     {
         if (company is null)
         {
-            return (pureserviceUser.CompanyLocationId is not null, null);
+            return (pureserviceUser.CompanyLocationId is not null, null, null);
         }
         
         var location = pureserviceUser.CompanyLocationId.HasValue
@@ -545,21 +551,20 @@ public class PureserviceUserService : IPureserviceUserService
         {
             if (wantedLocation is not null)
             {
-                return (true, wantedLocation);
+                return (true, wantedLocation, null);
             }
             
             if (entraUser.OfficeLocation is null)
             {
                 // user has no location in Entra and should not have one in Pureservice
-                return (false, null);
+                return (false, null, null);
             }
             
             // user has a location in Entra, but we could not find it in Pureservice, so it needs to be created
             _logger.LogInformation("Could not find LocationName {LocationName} under CompanyId {CompanyId} which UserId {UserId} should have. It needs to be created",
                 entraUser.OfficeLocation, company.Id, pureserviceUser.Id);
             
-            // TODO: Needs to be created and added??? HOW???
-            return (true, null);
+            return (true, wantedLocation, entraUser.OfficeLocation);
         }
         
         // location is not null
@@ -567,24 +572,23 @@ public class PureserviceUserService : IPureserviceUserService
         {
             if (location.Id != wantedLocation.Id)
             {
-                return (true, wantedLocation);
+                return (true, wantedLocation, null);
             }
             
             _logger.LogDebug("UserId {UserId} has correct LocationId {LocationId} under CompanyId {CompanyId}", pureserviceUser.Id, location.Id, company.Id);
-            return (false, null);
+            return (false, null, null);
         }
         
         // location is not null and wantedLocation is null
         if (entraUser.OfficeLocation is null)
         {
             // user has no location in Entra and should not have one in Pureservice
-            return (true, null);
+            return (true, null, null);
         }
         
         _logger.LogWarning("Could not find LocationName {LocationName} under CompanyId {CompanyId} which UserId {UserId} should have. It needs to be created",
             entraUser.OfficeLocation, company.Id, pureserviceUser.Id);
-            
-        // TODO: Needs to be created and added??? HOW???
-        return (true, null);
+        
+        return (true, wantedLocation, entraUser.OfficeLocation);
     }
 }

@@ -16,6 +16,7 @@ builder.Services.AddVestfoldMetrics();
 builder.Logging.AddVestfoldLogging();
 
 builder.Services.AddSingleton<IPureserviceCaller, PureserviceCaller>();
+builder.Services.AddSingleton<IPureserviceCompanyService, PureserviceCompanyService>();
 builder.Services.AddSingleton<IPureserviceEmailAddressService, PureserviceEmailAddressService>();
 builder.Services.AddSingleton<IPureservicePhoneNumberService, PureservicePhoneNumberService>();
 builder.Services.AddSingleton<IPureservicePhysicalAddressService, PureservicePhysicalAddressService>();

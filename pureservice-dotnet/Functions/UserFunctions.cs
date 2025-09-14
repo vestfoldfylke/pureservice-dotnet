@@ -24,19 +24,21 @@ public class UserFunctions
     private readonly ILogger<UserFunctions> _logger;
     private readonly IMetricsService _metricsService;
     private readonly IPureserviceCaller _pureserviceCaller;
+    private readonly IPureserviceCompanyService _pureserviceCompanyService;
     private readonly IPureserviceEmailAddressService _pureserviceEmailAddressService;
     private readonly IPureservicePhoneNumberService _pureservicePhoneNumberService;
     private readonly IPureservicePhysicalAddressService _pureservicePhysicalAddressService;
     private readonly IPureserviceUserService _pureserviceUserService;
 
     public UserFunctions(IGraphService graphService, ILogger<UserFunctions> logger, IMetricsService metricsService, IPureserviceCaller pureserviceCaller,
-        IPureserviceEmailAddressService pureserviceEmailAddressService, IPureservicePhoneNumberService pureservicePhoneNumberService,
+        IPureserviceCompanyService pureserviceCompanyService, IPureserviceEmailAddressService pureserviceEmailAddressService, IPureservicePhoneNumberService pureservicePhoneNumberService,
         IPureservicePhysicalAddressService pureservicePhysicalAddressService, IPureserviceUserService pureserviceUserService)
     {
         _graphService = graphService;
         _logger = logger;
         _metricsService = metricsService;
         _pureserviceCaller = pureserviceCaller;
+        _pureserviceCompanyService = pureserviceCompanyService;
         _pureserviceEmailAddressService = pureserviceEmailAddressService;
         _pureservicePhoneNumberService = pureservicePhoneNumberService;
         _pureservicePhysicalAddressService = pureservicePhysicalAddressService;
@@ -104,16 +106,24 @@ public class UserFunctions
                     var company = companies.Find(c => c.Name.Equals(entraUser.CompanyName, StringComparison.OrdinalIgnoreCase));
                     if (company is null)
                     {
-                        // TODO: Company needs to be created?
-                        _logger.LogError("CompanyName {CompanyName} for new pureservice user with EntraId {EntraId} not found in Pureservice. User will not be created", entraUser.CompanyName, entraUser.Id);
-                        synchronizationResult.CompanyMissingInPureserviceCount++;
-                        continue;
+                        company = await _pureserviceCompanyService.AddCompany(entraUser.CompanyName!);
+                        if (company is null)
+                        {
+                            _logger.LogError("CompanyName {CompanyName} for new pureservice user with EntraId {EntraId} not created in Pureservice. User will not be created", entraUser.CompanyName,
+                                entraUser.Id);
+                            synchronizationResult.CompanyMissingInPureserviceCount++;
+                            continue;
+                        }
+                        
+                        companies.Add(company);
                     }
 
+                    // NOTE: If department isn't found because company was just created, it will be created in the next sweep when user will be updated
                     var department = entraUser.Department is not null
                         ? departments.Find(d => d.Name.Equals(entraUser.Department, StringComparison.OrdinalIgnoreCase) && d.CompanyId == company.Id)
                         : null;
 
+                    // NOTE: If location isn't found because company was just created, it will be created in the next sweep when user will be updated
                     var location = entraUser.OfficeLocation is not null
                         ? locations.Find(l => l.Name.Equals(entraUser.OfficeLocation, StringComparison.OrdinalIgnoreCase) && l.CompanyId == company.Id)
                         : null;
@@ -304,14 +314,16 @@ public class UserFunctions
         
         var basicPropertiesToUpdate = _pureserviceUserService.NeedsBasicUpdate(pureserviceUser, entraUser, pureserviceManagerUser);
         
-        var companyPropertiesToUpdate = _pureserviceUserService.NeedsCompanyUpdate(pureserviceUser, entraUser, companies, companyDepartments, companyLocations);
+        var companyUpdate = _pureserviceUserService.NeedsCompanyUpdate(pureserviceUser, entraUser, companies);
+        var departmentUpdate = _pureserviceUserService.NeedsDepartmentUpdate(pureserviceUser, entraUser, companies, companyDepartments);
+        var locationUpdate = _pureserviceUserService.NeedsLocationUpdate(pureserviceUser, entraUser, companies, companyLocations);
         
         var updateEmail = !emailAddress.Email.Equals(entraUser.Mail, StringComparison.OrdinalIgnoreCase);
         
         var entraPhoneNumber = _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile");
         var phoneNumberUpdate = _pureservicePhoneNumberService.NeedsPhoneNumberUpdate(phoneNumber, entraPhoneNumber);
         
-        if (basicPropertiesToUpdate.Count == 0 && companyPropertiesToUpdate.Count == 0 && !updateEmail && !phoneNumberUpdate.Update)
+        if (basicPropertiesToUpdate.Count == 0 && companyUpdate is null && departmentUpdate is null && locationUpdate is null && !updateEmail && !phoneNumberUpdate.Update)
         {
             synchronizationResult.UserUpToDateCount++;
             _logger.LogInformation("User with UserId {UserId} is up to date", pureserviceUser.Id);
@@ -322,9 +334,62 @@ public class UserFunctions
         {
             synchronizationResult.UserBasicPropertiesUpdatedCount++;
         }
-        
-        if (companyPropertiesToUpdate.Count > 0 && await _pureserviceUserService.UpdateCompanyProperties(pureserviceUser.Id, companyPropertiesToUpdate))
+
+        if (companyUpdate is not null || departmentUpdate is not null || locationUpdate is not null)
         {
+            List<CompanyUpdateItem> propertiesToUpdate = [];
+
+            if (companyUpdate is not null)
+            {
+                var (updateItem, company) = await GetOrCreateCompany(companyUpdate);
+                if (updateItem is not null)
+                {
+                    propertiesToUpdate.Add(updateItem);
+                }
+
+                if (company is not null)
+                {
+                    companies.Add(company);
+                }
+            }
+            
+            if (departmentUpdate is not null)
+            {
+                var company = companies.Find(c => c.Id == pureserviceUser.CompanyId!.Value);
+                if (company is not null)
+                {
+                    var (updateItem, department) = await GetOrCreateDepartment(departmentUpdate, company);
+                    if (updateItem is not null)
+                    {
+                        propertiesToUpdate.Add(updateItem);
+                    }
+
+                    if (department is not null)
+                    {
+                        companyDepartments.Add(department);
+                    }
+                }
+            }
+            
+            if (locationUpdate is not null)
+            {
+                var company = companies.Find(c => c.Id == pureserviceUser.CompanyId!.Value);
+                if (company is not null)
+                {
+                    var (updateItem, location) = await GetOrCreateLocation(locationUpdate, company);
+                    if (updateItem is not null)
+                    {
+                        propertiesToUpdate.Add(updateItem);
+                    }
+
+                    if (location is not null)
+                    {
+                        companyLocations.Add(location);
+                    }
+                }
+            }
+            
+            await _pureserviceUserService.UpdateCompanyProperties(pureserviceUser.Id, propertiesToUpdate);
             synchronizationResult.UserCompanyPropertiesUpdatedCount++;
         }
 
@@ -383,5 +448,44 @@ public class UserFunctions
         }
         
         synchronizationResult.UserErrorCount++;
+    }
+
+    private async Task<(CompanyUpdateItem? UpdateItem, Company? company)> GetOrCreateCompany(CompanyUpdateItem updateItem)
+    {
+        if (updateItem.NameToCreate is null)
+        {
+            return (new CompanyUpdateItem(updateItem.PropertyName, updateItem.Id), null);
+        }
+        
+        var company = await _pureserviceCompanyService.AddCompany(updateItem.NameToCreate);
+        return company is not null
+            ? (new CompanyUpdateItem(updateItem.PropertyName, company.Id), company)
+            : (null, null);
+    }
+    
+    private async Task<(CompanyUpdateItem? UpdateItem, CompanyDepartment? department)> GetOrCreateDepartment(CompanyUpdateItem updateItem, Company company)
+    {
+        if (updateItem.NameToCreate is null)
+        {
+            return (new CompanyUpdateItem(updateItem.PropertyName, updateItem.Id), null);
+        }
+        
+        var department = await _pureserviceCompanyService.AddDepartment(updateItem.NameToCreate, company.Id);
+        return department is not null
+            ? (new CompanyUpdateItem(updateItem.PropertyName, department.Id), department)
+            : (null, null);
+    }
+    
+    private async Task<(CompanyUpdateItem? UpdateItem, CompanyLocation? location)> GetOrCreateLocation(CompanyUpdateItem updateItem, Company company)
+    {
+        if (updateItem.NameToCreate is null)
+        {
+            return (new CompanyUpdateItem(updateItem.PropertyName, updateItem.Id), null);
+        }
+        
+        var location = await _pureserviceCompanyService.AddLocation(updateItem.NameToCreate, company.Id);
+        return location is not null
+            ? (new CompanyUpdateItem(updateItem.PropertyName, location.Id), location)
+            : (null, null);
     }
 }
