@@ -352,8 +352,10 @@ public class UserFunctions
                     companies.Add(company);
                 }
             }
+
+            var allowDepartmentAndOrLocationUpdate = companyUpdate?.NameToCreate is null;
             
-            if (departmentUpdate is not null)
+            if (allowDepartmentAndOrLocationUpdate && departmentUpdate is not null)
             {
                 var company = companies.Find(c => c.Id == pureserviceUser.CompanyId!.Value);
                 if (company is not null)
@@ -371,7 +373,7 @@ public class UserFunctions
                 }
             }
             
-            if (locationUpdate is not null)
+            if (allowDepartmentAndOrLocationUpdate && locationUpdate is not null)
             {
                 var company = companies.Find(c => c.Id == pureserviceUser.CompanyId!.Value);
                 if (company is not null)
