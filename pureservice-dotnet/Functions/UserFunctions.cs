@@ -1,15 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-//using System.Net;
 using System.Threading.Tasks;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-/*using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Attributes;
-using Microsoft.Azure.WebJobs.Extensions.OpenApi.Core.Enums;
-using Microsoft.OpenApi.Models;*/
 using pureservice_dotnet.Models;
 using pureservice_dotnet.Models.Enums;
 using pureservice_dotnet.Services;
@@ -46,12 +40,7 @@ public class UserFunctions
     }
 
     [Function("Synchronize")]
-    /*[OpenApiOperation(operationId: "Synchronize")]
-    [OpenApiSecurity("Authentication", SecuritySchemeType.ApiKey, Name = "X-Functions-Key", In = OpenApiSecurityLocationType.Header)]
-    [OpenApiResponseWithBody(HttpStatusCode.OK, "application/json", typeof(SynchronizationResult), Description = "Trigger finished")]
-    [OpenApiResponseWithBody(HttpStatusCode.BadRequest, "text/plain", typeof(string), Description = "Trigger failed")]
-    [OpenApiResponseWithBody(HttpStatusCode.InternalServerError, "text/plain", typeof(string), Description = "Error occured")]*/
-    public async Task<IActionResult> Synchronize([HttpTrigger(AuthorizationLevel.Function, "post", Route = "User/Synchronize")] HttpRequest req)
+    public async Task Synchronize([TimerTrigger("%SynchronizeSchedule%")] TimerInfo timerInfo)
     {
         _logger.LogInformation("Starting UserFunctions_Synchronize");
         using var _ = _metricsService.Histogram($"{Constants.MetricsPrefix}_UserFunctions_Synchronize", "Duration of UserFunctions_Synchronize in seconds");
@@ -71,7 +60,7 @@ public class UserFunctions
             pureserviceUsers.Linked?.EmailAddresses is null || pureserviceUsers.Linked?.Languages is null || pureserviceUsers.Linked?.PhoneNumbers is null)
         {
             _logger.LogError("Expected linked results were not found in user list");
-            return new BadRequestObjectResult("Expected linked results were not found in user list");
+            return;
         }
 
         var synchronizationResult = new SynchronizationResult();
@@ -150,8 +139,6 @@ public class UserFunctions
         // TODO: Loop through pureservice users not existing in entra and disable them (should we anonymize them as well, if so, how?)
 
         _logger.LogInformation("UserFunctions_Synchronize finished: {@SynchronizationResult}", synchronizationResult);
-        
-        return new JsonResult(synchronizationResult);
     }
 
     private (User? pureserviceUser, User? pureserviceManagerUser, bool skipUser) GetPureserviceUserInfo(Microsoft.Graph.Models.User entraUser, UserList pureserviceUsers, SynchronizationResult synchronizationResult)

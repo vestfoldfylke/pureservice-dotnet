@@ -50,6 +50,7 @@ Create a `local.settings.json` file in the `pureservice-dotnet` folder with the 
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "SynchronizeSchedule": "0 */5 * * * *",
     "Serilog_MinimumLevel_Override_Microsoft.Hosting": "Information",
     "Serilog_MinimumLevel_Override_Microsoft.AspNetCore": "Warning",
     "Serilog_MinimumLevel_Override_OpenApiTriggerFunction": "Warning",
@@ -77,6 +78,20 @@ Create a `local.settings.json` file in the `pureservice-dotnet` folder with the 
 ```
 
 ### Explanation of settings and defaults
+
+`SynchronizeSchedule` contains the cron pattern for when the **Synchronize** function will trigger. Adjust it to your liking
+
+#### Azure App Registration settings
+
+This app requires an Azure App Registration with the following API permissions:
+- CustomSecAttributeAssignment.Read.All
+- User.Read.All
+
+#### Pureservice settings
+
+This app requires a Pureservice API key which has READ/WRITE persmissions. The API key can be of type `Unlimited` or `Limited`.<br />
+If the API key is of type `Limited`, it must have the correct collaboration zone chosen for it.<br />
+The API key should have short expiry time and should be rotated often!
 
 If `Pureservice_Wait_When_Max_Requests_Reached` is set to:<br />
 - **False**: The function will skip the request (Create, Update or Disable) and continue to next user until requests can be made again
