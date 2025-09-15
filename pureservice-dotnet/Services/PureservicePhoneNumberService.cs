@@ -94,17 +94,9 @@ public class PureservicePhoneNumberService : IPureservicePhoneNumberService
 
     public (bool Update, string? PhoneNumber) NeedsPhoneNumberUpdate(PhoneNumber? phoneNumber, string? entraPhoneNumber)
     {
-        if (phoneNumber is null)
-        {
-            return (entraPhoneNumber is not null, entraPhoneNumber);
-        }
-        
-        if (entraPhoneNumber is null)
-        {
-            return (true, null);
-        }
-        
-        return (phoneNumber.Number != entraPhoneNumber, entraPhoneNumber);
+        return phoneNumber is null
+            ? (entraPhoneNumber is not null, entraPhoneNumber)
+            : (phoneNumber.Number != entraPhoneNumber, entraPhoneNumber);
     }
 
     public async Task<bool> UpdatePhoneNumber(int phoneNumberId, string? phoneNumber, PhoneNumberType type, int userId)

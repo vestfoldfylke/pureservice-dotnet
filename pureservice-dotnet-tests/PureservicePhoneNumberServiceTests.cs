@@ -31,14 +31,14 @@ public class PureservicePhoneNumberServiceTests
         
         var result = _service.NeedsPhoneNumberUpdate(phoneNumberObj, entraPhoneNumber);
         
+        Assert.Equal(entraPhoneNumber, result.PhoneNumber);
+        
         if ((phoneNumber is null && entraPhoneNumber is null) || (phoneNumber is not null && entraPhoneNumber is not null))
         {
             Assert.False(result.Update);
-            Assert.Equal(entraPhoneNumber, result.PhoneNumber);
             return;
         }
         
         Assert.True(result.Update);
-        Assert.Equal(entraPhoneNumber, result.PhoneNumber);
     }
 }
