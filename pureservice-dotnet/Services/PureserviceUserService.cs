@@ -267,7 +267,7 @@ public class PureserviceUserService : IPureserviceUserService
     public CompanyUpdateItem? NeedsLocationUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies, List<CompanyLocation> companyLocations)
     {
         var company = GetCompany(pureserviceUser, entraUser, companies);
-        if (company.Company is null)
+        if (company.Company is not null)
         {
             return null;
         }
