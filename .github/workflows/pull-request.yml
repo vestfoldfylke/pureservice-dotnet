@@ -1,0 +1,31 @@
+name: Dev - Make sure tests are OK before a PR can be merged
+
+on:
+  push:
+    branches-ignore: ["main"]
+
+env:
+  APP_PACKAGE_PATH: 'pureservice-dotnet'  # set this to the path to your function app project, defaults to the repository root
+  DOTNET_VERSION: '9.0.x'                 # set this to the dotnet version to use (e.g. '2.1.x', '3.1.x', '5.0.x', '6.0.x', '7.0.x', '8.0.x', etc)
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest # For Linux, use ubuntu-latest
+    steps:
+    - name: 'Checkout GitHub Action'
+      uses: actions/checkout@v4
+
+    - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: 'Test Project'
+      run: dotnet test --configuration Release
+
+    - name: 'Resolve Project Dependencies Using Dotnet'
+      shell: bash # For Windows, use pwsh
+      run: |
+        pushd './${{ env.APP_PACKAGE_PATH }}'
+        dotnet build --configuration Release --output ./output
+        popd
