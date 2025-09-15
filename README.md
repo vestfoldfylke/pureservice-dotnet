@@ -54,6 +54,7 @@ Create a `local.settings.json` file in the `pureservice-dotnet` folder with the 
     "Serilog_MinimumLevel_Override_Microsoft.Hosting": "Information",
     "Serilog_MinimumLevel_Override_Microsoft.AspNetCore": "Warning",
     "Serilog_MinimumLevel_Override_OpenApiTriggerFunction": "Warning",
+    "Serilog_Console_MinimumLevel": "Debug",
     "BetterStack_SourceToken": "source-token",
     "BetterStack_Endpoint": "endpoint",
     "BetterStack_MinimumLevel": "Information",
