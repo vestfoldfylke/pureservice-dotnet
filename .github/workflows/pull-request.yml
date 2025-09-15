@@ -1,8 +1,10 @@
 name: Dev - Make sure tests are OK before a PR can be merged
 
 on:
+  pull_request:
+    branches: ["main"] # Runs on all PRs intowards main
   push:
-    branches-ignore: ["main"]
+    branches-ignore: ["main"] # Runs on all pushes except those to main
 
 env:
   APP_PACKAGE_PATH: 'pureservice-dotnet'  # set this to the path to your function app project, defaults to the repository root
