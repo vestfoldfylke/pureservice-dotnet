@@ -4,7 +4,7 @@ using pureservice_dotnet.Models.Enums;
 namespace pureservice_dotnet.Models;
 
 public record PhoneNumber(
-    string Number,
+    string? Number,
     string? NormalizedNumber,
     PhoneNumberType? Type,
     int? UserId,
