@@ -12,8 +12,7 @@ namespace pureservice_dotnet.Services;
 
 public interface IPureserviceUserService
 {
-    Task<User?> CreateNewUser(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId,
-        int physicalAddressId, int phoneNumberId, int emailAddressId);
+    Task<User?> CreateNewUser(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId, int physicalAddressId, int? phoneNumberId, int emailAddressId);
     Task<UserList> GetUser(int userId, string[]? entities = null);
     Task<UserList> GetUsers(string[]? entities = null, int start = 0, int limit = 500, bool includeSystemUsers = false, bool includeInactiveUsers = false);
     List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))> NeedsBasicUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser = null);
@@ -42,40 +41,9 @@ public class PureserviceUserService : IPureserviceUserService
         _pureserviceCaller = pureserviceCaller;
     }
 
-    public async Task<User?> CreateNewUser(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId,
-        int physicalAddressId, int phoneNumberId, int emailAddressId)
+    public async Task<User?> CreateNewUser(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId, int physicalAddressId, int? phoneNumberId, int emailAddressId)
     {
-        var payload = new
-        {
-            users = new List<object>
-            {
-                new
-                {
-                    firstName = entraUser.GivenName!,
-                    lastName = entraUser.Surname!,
-                    unavailable = false,
-                    title = entraUser.JobTitle ?? "",
-                    managerId,
-                    companyId,
-                    notes = "",
-                    role = UserRole.Enduser,
-                    disabled = entraUser.AccountEnabled == false,
-                    isSuperuser = false,
-                    importUniqueKey = entraUser.Id,
-                    flushNotifications = true, // NOTE: What does this mean?
-                    highlightNotifications = true, // NOTE: What does this mean?
-                    notificationScheme = 1, // NOTE: What does this mean?
-                    languageId = 2, // NOTE: Norwegian Bokmål
-                    links = new
-                    {
-                        address = new { id = physicalAddressId, type = "physicaladdress" },
-                        emailAddress = new { id = emailAddressId, type = "emailaddress" },
-                        phonenumber = new { id = phoneNumberId, type = "phonenumber" },
-                        company = new { id = companyId, type = "company" }
-                    }
-                }
-            }
-        };
+        var payload = GetNewUserPayload(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId);
         
         _logger.LogInformation("Creating new pureservice user with ImportUniqueKey {ImportUniqueKey}", entraUser.Id);
         var result = await _pureserviceCaller.PostAsync<User>($"{BasePath}?include=company,company.departments,company.locations,emailaddress,language,phonenumbers", payload);
@@ -415,6 +383,75 @@ public class PureserviceUserService : IPureserviceUserService
         _metricsService.Count($"{Constants.MetricsPrefix}_UpdateDepartmentAndLocation", "Number of department and/or location updates",
             (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
         return false;
+    }
+
+    private static object GetNewUserPayload(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId, int physicalAddressId, int? phoneNumberId, int emailAddressId)
+    {
+        if (phoneNumberId.HasValue)
+        {
+            return new
+            {
+                users = new List<object>
+                {
+                    new
+                    {
+                        firstName = entraUser.GivenName!,
+                        lastName = entraUser.Surname!,
+                        unavailable = false,
+                        title = entraUser.JobTitle ?? "",
+                        managerId,
+                        companyId,
+                        notes = "",
+                        role = UserRole.Enduser,
+                        disabled = entraUser.AccountEnabled == false,
+                        isSuperuser = false,
+                        importUniqueKey = entraUser.Id,
+                        flushNotifications = true, // NOTE: What does this mean?
+                        highlightNotifications = true, // NOTE: What does this mean?
+                        notificationScheme = 1, // NOTE: What does this mean?
+                        languageId = 2, // NOTE: Norwegian Bokmål
+                        links = new
+                        {
+                            address = new { id = physicalAddressId, type = "physicaladdress" },
+                            emailAddress = new { id = emailAddressId, type = "emailaddress" },
+                            phonenumber = new { id = phoneNumberId, type = "phonenumber" },
+                            company = new { id = companyId, type = "company" }
+                        }
+                    }
+                }
+            };
+        }
+        
+        return new
+        {
+            users = new List<object>
+            {
+                new
+                {
+                    firstName = entraUser.GivenName!,
+                    lastName = entraUser.Surname!,
+                    unavailable = false,
+                    title = entraUser.JobTitle ?? "",
+                    managerId,
+                    companyId,
+                    notes = "",
+                    role = UserRole.Enduser,
+                    disabled = entraUser.AccountEnabled == false,
+                    isSuperuser = false,
+                    importUniqueKey = entraUser.Id,
+                    flushNotifications = true, // NOTE: What does this mean?
+                    highlightNotifications = true, // NOTE: What does this mean?
+                    notificationScheme = 1, // NOTE: What does this mean?
+                    languageId = 2, // NOTE: Norwegian Bokmål
+                    links = new
+                    {
+                        address = new { id = physicalAddressId, type = "physicaladdress" },
+                        emailAddress = new { id = emailAddressId, type = "emailaddress" },
+                        company = new { id = companyId, type = "company" }
+                    }
+                }
+            }
+        };
     }
 
     private (bool Update, Company? Company, string? Name) GetCompany(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies)

@@ -82,6 +82,67 @@ public class PureserviceUserServiceTests
         Assert.NotNull(userList);
     }
     
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CreateNewUser_Should_Return_New_User_With_Or_Without_PhoneNumber(bool hasPhoneNumber)
+    {
+        int? managerId = 1337;
+        
+        var entraUser = new Microsoft.Graph.Models.User
+        {
+            GivenName = "Foo",
+            Surname = "Bar",
+            DisplayName = "Foo Bar",
+            JobTitle = "Supperådgiver",
+            Manager = new Microsoft.Graph.Models.User { Id = managerId.ToString() },
+            AccountEnabled = true,
+            Id = "69"
+        };
+
+        const int companyId = 42;
+        const int emailAddressId = 9;
+        const int physicalAddressId = 7;
+        
+        int? phoneNumberId = hasPhoneNumber ? 8 : null;
+
+        var newPureserviceUser = new User
+        {
+            Id = 42,
+            FirstName = entraUser.GivenName,
+            LastName = entraUser.Surname,
+            Title = entraUser.JobTitle,
+            ManagerId = managerId,
+            Disabled = !entraUser.AccountEnabled.GetValueOrDefault(true),
+            Company = new Company
+            {
+                Name = "",
+                Created = DateTime.Now,
+                Id = companyId,
+                CreatedById = 1,
+                Departments = [],
+                Disabled = false,
+                Locations = []
+            },
+            CompanyId = companyId,
+            CompanyDepartmentId = null,
+            CompanyLocationId = null,
+            Department = null,
+            Location = null,
+            Created = DateTime.Now,
+            CreatedById = 1
+        };
+
+        _pureserviceCaller.PostAsync<User>(
+            Arg.Is<string>(s => s.StartsWith("user")),
+            Arg.Is<object>(o => HasPayloadPhoneNumber(o, hasPhoneNumber))
+        ).Returns(newPureserviceUser);
+        
+        var userList = await _service.CreateNewUser(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId);
+        
+        Assert.NotNull(userList);
+    }
+    
     [Fact]
     public async Task CreateNewUser_Should_Return_Null_When_User_Not_Created()
     {
@@ -962,5 +1023,15 @@ public class PureserviceUserServiceTests
         
         var result = await _service.UpdateCompanyProperties(userId, updateProperties);
         Assert.True(result);
+    }
+
+    private static bool HasPayloadPhoneNumber(object payload, bool shouldHavePhoneNumber)
+    {
+        if (payload.GetType().GetProperty("users")?.GetValue(payload) is not IList<object> { Count: 1 } users) { return false; }
+        if (users[0].GetType().GetProperty("links")?.GetValue(users[0]) is not { } links) { return false; }
+
+        var retValue = links.GetType().GetProperty("phonenumber")?.GetValue(links) is not null == shouldHavePhoneNumber;
+        
+        return retValue;
     }
 }

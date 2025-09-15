@@ -240,8 +240,10 @@ public class UserFunctions
         }
                 
         var entraPhoneNumber = _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile");
-        var pureservicePhoneNumber = await _pureservicePhoneNumberService.AddNewPhoneNumber(entraPhoneNumber ?? "", PhoneNumberType.Mobile);
-        if (pureservicePhoneNumber is null)
+        var pureservicePhoneNumber = !string.IsNullOrWhiteSpace(entraPhoneNumber)
+            ? await _pureservicePhoneNumberService.AddNewPhoneNumber(entraPhoneNumber, PhoneNumberType.Mobile)
+            : null;
+        if (pureservicePhoneNumber is null && !string.IsNullOrWhiteSpace(entraPhoneNumber))
         {
             _logger.LogError("Failed to create phone number for new pureservice user with EntraId {EntraId} and PhoneNumber {PhoneNumber}. User will not be created", entraUser.Id, entraPhoneNumber);
             synchronizationResult.UserErrorCount++;
@@ -257,7 +259,7 @@ public class UserFunctions
             return;
         }
 
-        var pureserviceUser = await _pureserviceUserService.CreateNewUser(entraUser, pureserviceManagerUser?.Id, companyId, physicalAddressResult.Id, pureservicePhoneNumber.Id, pureserviceEmailAddress.Id);
+        var pureserviceUser = await _pureserviceUserService.CreateNewUser(entraUser, pureserviceManagerUser?.Id, companyId, physicalAddressResult.Id, pureservicePhoneNumber?.Id, pureserviceEmailAddress.Id);
 
         if (pureserviceUser is null)
         {
