@@ -65,7 +65,7 @@ public class UserFunctions
         
         _logger.LogInformation("Retrieved {EmployeeCount} employees, {StudentCount} students, total {TotalCount} from Entra", entraEmployees.Count, entraStudents.Count, entraUsers.Count);
         
-        var pureserviceUsers = await _pureserviceUserService.GetUsers(["company", "company.departments", "company.locations", "emailaddress", "language", "phonenumbers"]);
+        var pureserviceUsers = await _pureserviceUserService.GetUsers(["company", "company.departments", "company.locations", "emailaddress", "language", "phonenumbers"], includeInactiveUsers: true);
 
         if (pureserviceUsers.Linked?.Companies is null || pureserviceUsers.Linked?.CompanyDepartments is null || pureserviceUsers.Linked?.CompanyLocations is null ||
             pureserviceUsers.Linked?.EmailAddresses is null || pureserviceUsers.Linked?.Languages is null || pureserviceUsers.Linked?.PhoneNumbers is null)
