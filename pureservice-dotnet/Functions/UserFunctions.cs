@@ -141,7 +141,8 @@ public class UserFunctions
         _logger.LogInformation("UserFunctions_Synchronize finished: {@SynchronizationResult}", synchronizationResult);
     }
 
-    private (User? pureserviceUser, User? pureserviceManagerUser, bool skipUser) GetPureserviceUserInfo(Microsoft.Graph.Models.User entraUser, UserList pureserviceUsers, SynchronizationResult synchronizationResult)
+    private (User? pureserviceUser, User? pureserviceManagerUser, bool skipUser) GetPureserviceUserInfo(Microsoft.Graph.Models.User entraUser, UserList pureserviceUsers,
+        SynchronizationResult synchronizationResult)
     {
         if (entraUser.Mail is null && entraUser.AccountEnabled.HasValue && entraUser.AccountEnabled.Value)
         {
@@ -166,7 +167,8 @@ public class UserFunctions
         return (pureserviceUser, pureserviceManagerUser, false);
     }
 
-    private (EmailAddress? primaryEmailAddress, PhoneNumber? primaryPhoneNumber, List<int> phoneNumberIds) GetPureserviceUserContactInfo(User pureserviceUser, UserList pureserviceUsers, SynchronizationResult synchronizationResult)
+    private (EmailAddress? primaryEmailAddress, PhoneNumber? primaryPhoneNumber, List<int> phoneNumberIds) GetPureserviceUserContactInfo(User pureserviceUser, UserList pureserviceUsers,
+        SynchronizationResult synchronizationResult)
     {
         if (pureserviceUser.Links is null)
         {
@@ -203,7 +205,8 @@ public class UserFunctions
     private async Task CreateUser(Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser, int companyId, CompanyDepartment? department, CompanyLocation? location,
         SynchronizationResult synchronizationResult)
     {
-        const int expectedRequestCount = 5; // PhysicalAddress, PhoneNumber, EmailAddress, User, DepartmentAndLocation (maybe)
+        // PhysicalAddress, PhoneNumber (maybe), EmailAddress, User, DepartmentAndLocation (maybe)
+        const int expectedRequestCount = 5;
         var (needsToWait, requestCountLastMinute, secondsToWait) = _pureserviceCaller.NeedsToWait(expectedRequestCount);
         if (needsToWait)
         {
@@ -276,7 +279,10 @@ public class UserFunctions
     private async Task UpdateUser(User pureserviceUser, Microsoft.Graph.Models.User entraUser, EmailAddress emailAddress, PhoneNumber? phoneNumber, List<PhoneNumber> phoneNumbers,
         User? pureserviceManagerUser, List<Company> companies, List<CompanyDepartment> companyDepartments, List<CompanyLocation> companyLocations, SynchronizationResult synchronizationResult)
     {
-        const int expectedRequestCount = 5; // BasicProperties, CompanyProperties, EmailAddress, (PhoneNumber (maybe add) and PhoneNumber (maybe set as default)), (PhoneNumber (maybe update) and PhoneNumber (maybe set as default)), PhoneNumber (maybe update) 
+        // BasicProperties, CompanyProperties, EmailAddress, PhoneNumber (maybe add) and PhoneNumber (maybe set as default)
+        // BasicProperties, CompanyProperties, EmailAddress, PhoneNumber (maybe update) and PhoneNumber (maybe set as default)
+        // BasicProperties, CompanyProperties, EmailAddress, PhoneNumber (maybe update)
+        const int expectedRequestCount = 5;
         var (needsToWait, requestCountLastMinute, secondsToWait) = _pureserviceCaller.NeedsToWait(expectedRequestCount);
         if (needsToWait)
         {
