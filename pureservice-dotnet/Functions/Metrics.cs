@@ -17,9 +17,7 @@ public class MetricsEndpoint
     }
 
     [Function("Metrics")]
-    public async Task<IActionResult> Run(
-        [HttpTrigger(AuthorizationLevel.Function, "get", Route = "metrics")]
-        HttpRequest req)
+    public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "get", Route = "metrics")] HttpRequest req)
     {
         _logger.LogDebug("Serving Prometheus metrics");
         

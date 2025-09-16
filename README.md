@@ -4,42 +4,40 @@ Synchronization service to add / update / disable / enable user objects in Pures
 
 ## Properties handled on employees from `Entra ID`
 
-| Property in Pureservice | Property in Source | Description                    | Category     | Type   | Default Value |
-|------------------------|--------------------|---------------------------------|--------------|--------|---------------|
-| fullName               | displayName        | Full name                       | basic        | string | null          |
-| firstName              | givenName          | First name                      | basic        | string | null          |
-| lastName               | surname            | Last name                       | basic        | string | null          |
-| title                  | jobTitle           | Job title                       | basic        | string | null          |
-| managerId              | manager.id         | Manager ID for Pureservice user | basic        | int    | null          |
-| companyId              | companyName        | Company name                    | company      | int    | null          |
-| companyDepartmentId    | department         | Company department              | company      | int    | null          |
-| companyLocationId      | officeLocation     | Company location                | company      | int    | null          |
-| emailAddressId         | mail               | Email address                   | emailaddress | int    | null          |
-| phoneNumberId          | csa.mobile         | Mobile phone number             | phonenumber  | int    | null          |
-| languageId             | preferredLanguage  | Language                        | basic        | int    | Norwegian     |
-| role                   |                    | Role (UserRole) - Sluttbruker   | basic        | int    | null          |
-| disabled               | accountEnabled     | Disabled (true/false)           | basic        | int    | false         |
-| importUniqueKey        | id                 | Unique key for import           | basic        | int    | null          |
-| username               | userPrincipalName  | Username                        | basic        | int    | null          |
+| Property in Pureservice | Property in Source | Description                                 | Category     | Type   | Default Value |
+|------------------------|--------------------|----------------------------------------------|--------------|--------|---------------|
+| firstName              | givenName          | First name                                   | basic        | string | null          |
+| lastName               | surname            | Last name                                    | basic        | string | null          |
+| title                  | jobTitle           | Job title                                    | basic        | string | null          |
+| managerId              | manager.id         | Manager ID for Pureservice user              | basic        | int    | null          |
+| companyId              | companyName        | Company name                                 | company      | int    | null          |
+| companyDepartmentId    | department         | Company department                           | company      | int    | null          |
+| companyLocationId      | officeLocation     | Company location                             | company      | int    | null          |
+| emailAddressId         | mail               | Email address                                | emailaddress | int    | null          |
+| phoneNumberId          | csa.mobile         | Mobile phone number                          | phonenumber  | int    | null          |
+| disabled               | accountEnabled     | Disabled                                     | basic        | int    | false         |
+| languageId             | preferredLanguage  | Language (set to Norwegian for now)          | basic        | int    | Norwegian     |
+| role                   |                    | Role (UserRole) (only set on creation)       | basic        | int    | Sluttbruker   |
+| importUniqueKey        | id                 | Unique key for import (only set on creation) | basic        | int    | null          |
+| username               | userPrincipalName  | Username (only set on creation)              | basic        | int    | null          |
 
 ## Properties handled on students from `Entra ID`
 
-| Property in Pureservice | Property in Source | Description                    | Category     | Type   | Default Value |
-|------------------------|--------------------|---------------------------------|--------------|--------|---------------|
-| fullName               | displayName        | Full name                       | basic        | string | null          |
-| firstName              | givenName          | First name                      | basic        | string | null          |
-| lastName               | surname            | Last name                       | basic        | string | null          |
-| title                  | jobTitle           | Job title                       | basic        | string | null          |
-| companyId              | companyName        | Company name                    | company      | int    | null          |
-| companyDepartmentId    | department         | Company department              | company      | int    | null          |
-| companyLocationId      | officeLocation     | Company location                | company      | int    | null          |
-| emailAddressId         | mail               | Email address                   | emailaddress | int    | null          |
-| phoneNumberId          | csa.mobile         | Mobile phone number             | phonenumber  | int    | null          |
-| languageId             | preferredLanguage  | Language                        | basic        | int    | Norwegian     |
-| role                   |                    | Role (UserRole) - Sluttbruker   | basic        | int    | null          |
-| disabled               | accountEnabled     | Disabled (true/false)           | basic        | int    | false         |
-| importUniqueKey        | id                 | Unique key for import           | basic        | int    | null          |
-| username               | userPrincipalName  | Username                        | basic        | int    | null          |
+| Property in Pureservice | Property in Source | Description                                 | Category     | Type   | Default Value |
+|------------------------|--------------------|----------------------------------------------|--------------|--------|---------------|
+| firstName              | givenName          | First name                                   | basic        | string | null          |
+| lastName               | surname            | Last name                                    | basic        | string | null          |
+| title                  | jobTitle           | Job title                                    | basic        | string | null          |
+| companyId              | companyName        | Company name                                 | company      | int    | null          |
+| companyDepartmentId    | department         | Company department                           | company      | int    | null          |
+| companyLocationId      | officeLocation     | Company location                             | company      | int    | null          |
+| emailAddressId         | mail               | Email address                                | emailaddress | int    | null          |
+| phoneNumberId          | csa.mobile         | Mobile phone number                          | phonenumber  | int    | null          |
+| disabled               | accountEnabled     | Disabled                                     | basic        | int    | false         |
+| languageId             | preferredLanguage  | Language (set to Norwegian for now)          | basic        | int    | Norwegian     |
+| role                   |                    | Role (UserRole) (only set on creation)       | basic        | int    | Sluttbruker   |
+| importUniqueKey        | id                 | Unique key for import (only set on creation) | basic        | int    | null          |
+| username               | userPrincipalName  | Username (only set on creation)              | basic        | int    | null          |
 
 ## Setup
 
@@ -53,20 +51,19 @@ Create a `local.settings.json` file in the `pureservice-dotnet` folder with the 
     "SynchronizeSchedule": "0 */5 * * * *",
     "Serilog_MinimumLevel_Override_Microsoft.Hosting": "Information",
     "Serilog_MinimumLevel_Override_Microsoft.AspNetCore": "Warning",
-    "Serilog_MinimumLevel_Override_OpenApiTriggerFunction": "Warning",
     "Serilog_Console_MinimumLevel": "Debug",
     "BetterStack_SourceToken": "source-token",
     "BetterStack_Endpoint": "endpoint",
     "BetterStack_MinimumLevel": "Information",
     "MicrosoftTeams_WebhookUrl": "teams-webhook-url",
     "MicrosoftTeams_UseWorkflows": "true",
-    "MicrosoftTeams_TitleTemplate": "Something",
+    "MicrosoftTeams_TitleTemplate": "pureservice-usersync-local-dev",
     "MicrosoftTeams_MinimumLevel": "Error",
     "Pureservice_BaseUrl": "https://instancename.pureservice.com/agent/api/",
     "Pureservice_ApiKey": "your-api-key",
     "Pureservice_Max_Requests_Per_Minute": "100",
     "Pureservice_Wait_When_Max_Requests_Reached": "true",
-    "Pureservice_Wait_Seconds": "20",
+    "Pureservice_Wait_Seconds": "30",
     "AZURE_CLIENT_ID": "azure-client-id",
     "AZURE_CLIENT_SECRET": "azure-client-secret",
     "AZURE_TENANT_ID": "azure-tenant-id",
@@ -78,9 +75,17 @@ Create a `local.settings.json` file in the `pureservice-dotnet` folder with the 
 }
 ```
 
+When deploying to Azure, these settings should be added to the Function App Configuration settings
+
+> [!IMPORTANT]
+> Azure App Services does not allow periods (.) in the app setting names.<br />
+> So the following settings must be renamed:
+> - `Serilog_MinimumLevel_Override_Microsoft.Hosting` **->** `Serilog_MinimumLevel_Override_Microsoft_Hosting`
+> - `Serilog_MinimumLevel_Override_Microsoft.AspNetCore` **->** `Serilog_MinimumLevel_Override_Microsoft_AspNetCore`
+
 ### Explanation of settings and defaults
 
-`SynchronizeSchedule` contains the cron pattern for when the **Synchronize** function will trigger. Adjust it to your liking
+`SynchronizeSchedule` contains the [NCRONTAB expression](https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-timer?tabs=python-v2%2Cisolated-process%2Cnodejs-v4&pivots=programming-language-csharp#ncrontab-expressions) for when the **Synchronize** function will trigger. Adjust it to your liking
 
 #### Azure App Registration settings
 
