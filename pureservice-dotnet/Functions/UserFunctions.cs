@@ -141,68 +141,7 @@ public class UserFunctions
         _logger.LogInformation("UserFunctions_Synchronize finished: {@SynchronizationResult}", synchronizationResult);
     }
 
-    private (User? pureserviceUser, User? pureserviceManagerUser, bool skipUser) GetPureserviceUserInfo(Microsoft.Graph.Models.User entraUser, UserList pureserviceUsers,
-        SynchronizationResult synchronizationResult)
-    {
-        if (entraUser.Mail is null && entraUser.AccountEnabled.HasValue && entraUser.AccountEnabled.Value)
-        {
-            _logger.LogError("Entra user with Id {EntraId} has no email address. Skipping", entraUser.Id);
-            synchronizationResult.UserMissingEmailAddressCount++;
-            return (null, null, true);
-        }
-
-        if (entraUser.CompanyName is null && entraUser.AccountEnabled.HasValue && entraUser.AccountEnabled.Value)
-        {
-            _logger.LogError("Entra user with Id {EntraId} has no company name. Skipping", entraUser.Id);
-            synchronizationResult.UserMissingCompanyNameCount++;
-            return (null, null, true);
-        }
-            
-        var pureserviceUser = pureserviceUsers.Users.Find(u => !string.IsNullOrEmpty(u.ImportUniqueKey) && u.ImportUniqueKey == entraUser.Id);
-            
-        var pureserviceManagerUser = entraUser.Manager?.Id is not null
-            ? pureserviceUsers.Users.Find(u => !string.IsNullOrEmpty(u.ImportUniqueKey) && u.ImportUniqueKey == entraUser.Manager.Id)
-            : null;
-        
-        return (pureserviceUser, pureserviceManagerUser, false);
-    }
-
-    private (EmailAddress? primaryEmailAddress, PhoneNumber? primaryPhoneNumber, List<int> phoneNumberIds) GetPureserviceUserContactInfo(User pureserviceUser, UserList pureserviceUsers,
-        SynchronizationResult synchronizationResult)
-    {
-        if (pureserviceUser.Links is null)
-        {
-            _logger.LogError("UserId {UserId} has no links. Skipping", pureserviceUser.Id);
-            synchronizationResult.UserErrorCount++;
-            return (null, null, []);
-        }
-
-        if (pureserviceUser.Links.EmailAddress is null)
-        {
-            _logger.LogError("UserId {UserId} has no email address. Skipping", pureserviceUser.Id);
-            synchronizationResult.UserMissingEmailAddressCount++;
-            return (null, null, []);
-        }
-
-        var primaryEmailAddress = pureserviceUsers.Linked!.EmailAddresses!.Find(e => e.Id == pureserviceUser.Links.EmailAddress.Id);
-
-        if (primaryEmailAddress is null)
-        {
-            _logger.LogError("EmailAddressId {EmailAddressId} for UserId {UserId} not found in Pureservice. Skipping", pureserviceUser.Links.EmailAddress.Id, pureserviceUser.Id);
-            synchronizationResult.UserMissingEmailAddressCount++;
-            return (null, null, []);
-        }
-            
-        var primaryPhoneNumber = pureserviceUser.Links.PhoneNumber is not null
-            ? pureserviceUsers.Linked!.PhoneNumbers!.Find(p => p.Id == pureserviceUser.Links.PhoneNumber.Id)
-            : null;
-
-        var phoneNumberIds = pureserviceUser.Links.PhoneNumbers?.Ids ?? [];
-        
-        return (primaryEmailAddress, primaryPhoneNumber, phoneNumberIds);
-    }
-
-    private async Task CreateUser(Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser, int companyId, CompanyDepartment? department, CompanyLocation? location,
+    public async Task CreateUser(Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser, int companyId, CompanyDepartment? department, CompanyLocation? location,
         SynchronizationResult synchronizationResult)
     {
         // PhysicalAddress, PhoneNumber (maybe), EmailAddress, User, DepartmentAndLocation (maybe)
@@ -276,7 +215,7 @@ public class UserFunctions
         }
     }
     
-    private async Task UpdateUser(User pureserviceUser, Microsoft.Graph.Models.User entraUser, EmailAddress emailAddress, PhoneNumber? phoneNumber, List<PhoneNumber> phoneNumbers,
+    public async Task UpdateUser(User pureserviceUser, Microsoft.Graph.Models.User entraUser, EmailAddress emailAddress, PhoneNumber? phoneNumber, List<PhoneNumber> phoneNumbers,
         User? pureserviceManagerUser, List<Company> companies, List<CompanyDepartment> companyDepartments, List<CompanyLocation> companyLocations, SynchronizationResult synchronizationResult)
     {
         // BasicProperties, CompanyProperties, EmailAddress, PhoneNumber (maybe add) and PhoneNumber (maybe set as default)
@@ -347,41 +286,53 @@ public class UserFunctions
                     companies.Add(company);
                 }
             }
-
-            var allowDepartmentAndOrLocationUpdate = companyUpdate?.NameToCreate is null;
             
-            if (allowDepartmentAndOrLocationUpdate && departmentUpdate is not null)
+            if (companyUpdate is null && departmentUpdate is not null)
             {
-                var company = companies.Find(c => c.Id == pureserviceUser.CompanyId!.Value);
-                if (company is not null)
+                if (!pureserviceUser.CompanyId.HasValue)
                 {
-                    var (updateItem, department) = await GetOrCreateDepartment(departmentUpdate, company);
-                    if (updateItem is not null)
+                    _logger.LogError("UserId {UserId} has no CompanyId set in Pureservice, cannot update department: {@Department}", pureserviceUser.Id, departmentUpdate);
+                }
+                else
+                {
+                    var company = companies.Find(c => c.Id == pureserviceUser.CompanyId.Value);
+                    if (company is not null)
                     {
-                        propertiesToUpdate.Add(updateItem);
-                    }
+                        var (updateItem, department) = await GetOrCreateDepartment(departmentUpdate, company);
+                        if (updateItem is not null)
+                        {
+                            propertiesToUpdate.Add(updateItem);
+                        }
 
-                    if (department is not null)
-                    {
-                        companyDepartments.Add(department);
+                        if (department is not null)
+                        {
+                            companyDepartments.Add(department);
+                        }
                     }
                 }
             }
             
-            if (allowDepartmentAndOrLocationUpdate && locationUpdate is not null)
+            if (companyUpdate is null && locationUpdate is not null)
             {
-                var company = companies.Find(c => c.Id == pureserviceUser.CompanyId!.Value);
-                if (company is not null)
+                if (!pureserviceUser.CompanyId.HasValue)
                 {
-                    var (updateItem, location) = await GetOrCreateLocation(locationUpdate, company);
-                    if (updateItem is not null)
+                    _logger.LogError("UserId {UserId} has no CompanyId set in Pureservice, cannot update location: {@Location}", pureserviceUser.Id, locationUpdate);
+                }
+                else
+                {
+                    var company = companies.Find(c => c.Id == pureserviceUser.CompanyId.Value);
+                    if (company is not null)
                     {
-                        propertiesToUpdate.Add(updateItem);
-                    }
+                        var (updateItem, location) = await GetOrCreateLocation(locationUpdate, company);
+                        if (updateItem is not null)
+                        {
+                            propertiesToUpdate.Add(updateItem);
+                        }
 
-                    if (location is not null)
-                    {
-                        companyLocations.Add(location);
+                        if (location is not null)
+                        {
+                            companyLocations.Add(location);
+                        }
                     }
                 }
             }
@@ -445,6 +396,67 @@ public class UserFunctions
         }
         
         synchronizationResult.UserErrorCount++;
+    }
+
+    private (User? pureserviceUser, User? pureserviceManagerUser, bool skipUser) GetPureserviceUserInfo(Microsoft.Graph.Models.User entraUser, UserList pureserviceUsers,
+        SynchronizationResult synchronizationResult)
+    {
+        if (entraUser.Mail is null && entraUser.AccountEnabled.HasValue && entraUser.AccountEnabled.Value)
+        {
+            _logger.LogError("Entra user with Id {EntraId} has no email address. Skipping", entraUser.Id);
+            synchronizationResult.UserMissingEmailAddressCount++;
+            return (null, null, true);
+        }
+
+        if (entraUser.CompanyName is null && entraUser.AccountEnabled.HasValue && entraUser.AccountEnabled.Value)
+        {
+            _logger.LogError("Entra user with Id {EntraId} has no company name. Skipping", entraUser.Id);
+            synchronizationResult.UserMissingCompanyNameCount++;
+            return (null, null, true);
+        }
+            
+        var pureserviceUser = pureserviceUsers.Users.Find(u => !string.IsNullOrEmpty(u.ImportUniqueKey) && u.ImportUniqueKey == entraUser.Id);
+            
+        var pureserviceManagerUser = entraUser.Manager?.Id is not null
+            ? pureserviceUsers.Users.Find(u => !string.IsNullOrEmpty(u.ImportUniqueKey) && u.ImportUniqueKey == entraUser.Manager.Id)
+            : null;
+        
+        return (pureserviceUser, pureserviceManagerUser, false);
+    }
+
+    private (EmailAddress? primaryEmailAddress, PhoneNumber? primaryPhoneNumber, List<int> phoneNumberIds) GetPureserviceUserContactInfo(User pureserviceUser, UserList pureserviceUsers,
+        SynchronizationResult synchronizationResult)
+    {
+        if (pureserviceUser.Links is null)
+        {
+            _logger.LogError("UserId {UserId} has no links. Skipping", pureserviceUser.Id);
+            synchronizationResult.UserErrorCount++;
+            return (null, null, []);
+        }
+
+        if (pureserviceUser.Links.EmailAddress is null)
+        {
+            _logger.LogError("UserId {UserId} has no email address. Skipping", pureserviceUser.Id);
+            synchronizationResult.UserMissingEmailAddressCount++;
+            return (null, null, []);
+        }
+
+        var primaryEmailAddress = pureserviceUsers.Linked!.EmailAddresses!.Find(e => e.Id == pureserviceUser.Links.EmailAddress.Id);
+
+        if (primaryEmailAddress is null)
+        {
+            _logger.LogError("EmailAddressId {EmailAddressId} for UserId {UserId} not found in Pureservice. Skipping", pureserviceUser.Links.EmailAddress.Id, pureserviceUser.Id);
+            synchronizationResult.UserMissingEmailAddressCount++;
+            return (null, null, []);
+        }
+            
+        var primaryPhoneNumber = pureserviceUser.Links.PhoneNumber is not null
+            ? pureserviceUsers.Linked!.PhoneNumbers!.Find(p => p.Id == pureserviceUser.Links.PhoneNumber.Id)
+            : null;
+
+        var phoneNumberIds = pureserviceUser.Links.PhoneNumbers?.Ids ?? [];
+        
+        return (primaryEmailAddress, primaryPhoneNumber, phoneNumberIds);
     }
 
     private async Task<(CompanyUpdateItem? UpdateItem, Company? company)> GetOrCreateCompany(CompanyUpdateItem updateItem)
