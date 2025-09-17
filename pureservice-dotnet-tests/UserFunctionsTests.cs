@@ -20,6 +20,7 @@ public class UserFunctionsTests
     private readonly IPureserviceCompanyService _companyService;
     private readonly IPureserviceEmailAddressService _emailAddressService;
     private readonly IPureservicePhoneNumberService _phoneNumberService;
+    private readonly IPureservicePhysicalAddressService _physicalAddressService;
     private readonly IPureserviceUserService _pureserviceUserService;
     
     public UserFunctionsTests()
@@ -29,14 +30,14 @@ public class UserFunctionsTests
         _companyService = Substitute.For<IPureserviceCompanyService>();
         _emailAddressService = Substitute.For<IPureserviceEmailAddressService>();
         _phoneNumberService = Substitute.For<IPureservicePhoneNumberService>();
+        _physicalAddressService = Substitute.For<IPureservicePhysicalAddressService>();
         _pureserviceUserService = Substitute.For<IPureserviceUserService>();
-        
-        var physicalAddressService = Substitute.For<IPureservicePhysicalAddressService>();
 
         _service = new UserFunctions(_graphService, Substitute.For<ILogger<UserFunctions>>(), Substitute.For<IMetricsService>(), _pureserviceCaller, _companyService,
-            _emailAddressService, _phoneNumberService, physicalAddressService, _pureserviceUserService);
+            _emailAddressService, _phoneNumberService, _physicalAddressService, _pureserviceUserService);
     }
 
+    // UpdateUser
     [Theory]
     [InlineData(5, 5, 5)]
     [InlineData(5, 3, 5)]
@@ -1454,5 +1455,525 @@ public class UserFunctionsTests
         await _companyService.DidNotReceive().AddCompany(Arg.Any<string>());
         await _companyService.DidNotReceive().AddDepartment(Arg.Any<string>(), Arg.Any<int>());
         await _companyService.DidNotReceive().AddLocation(Arg.Any<string>(), Arg.Any<int>());
+    }
+    
+    // CreateUser
+    [Theory]
+    [InlineData(5, 5, 5)]
+    [InlineData(5, 3, 5)]
+    [InlineData(1, 1, 1)]
+    public async Task CreateUser_Needs_To_Wait_When_Request_Limit_Is_Reached(int expectedRequestCount, int requestCountLastMinute, int maxRequestsPerMinute)
+    {
+        const string firstName = "Ragnvald";
+        const string lastName = "Rumpelo";
+        const string title = "Supperådgiver";
+        const string email = "ragnvald.rumpelo@foo.biz";
+
+        const int companyId = 2;
+        const int departmentId = 3;
+        const string departmentName = "Bar";
+        const int locationId = 4;
+        const string locationName = "Biz";
+        
+        var entraUser = new Microsoft.Graph.Models.User
+        {
+            GivenName = firstName,
+            Surname = lastName,
+            JobTitle = title,
+            CompanyName = "Foo",
+            Department = "Bar",
+            OfficeLocation = "Biz",
+            Mail = email,
+            AccountEnabled = true,
+            Id = "rr-42",
+            UserPrincipalName = email
+        };
+        
+        var department = new CompanyDepartment
+        {
+            Name = departmentName,
+            Id = departmentId,
+            Created = DateTime.Now.AddDays(-10),
+            CreatedById = 1
+        };
+        
+        var location = new CompanyLocation
+        {
+            Name = locationName,
+            Id = locationId,
+            Created = DateTime.Now.AddDays(-10),
+            CreatedById = 1
+        };
+        
+        var needsToWait = expectedRequestCount + requestCountLastMinute > maxRequestsPerMinute;
+        
+        var synchronizationResult = new SynchronizationResult();
+
+        _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((needsToWait, requestCountLastMinute, null));
+        
+        var exception = await Record.ExceptionAsync(async () => await _service.CreateUser(entraUser, null, companyId, department, location, synchronizationResult));
+        Assert.Null(exception);
+        
+        Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
+        Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
+        Assert.Equal(0, synchronizationResult.UserHandledCount);
+        Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserErrorCount);
+        Assert.Equal(0, synchronizationResult.UserCreatedCount);
+        
+        await _physicalAddressService.DidNotReceive().AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+        _graphService.DidNotReceive().GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<string>(), Arg.Any<string>());
+        await _phoneNumberService.DidNotReceive().AddNewPhoneNumber(Arg.Any<string>(), Arg.Any<PhoneNumberType>());
+        await _emailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());
+        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+    }
+    
+    [Fact]
+    public async Task CreateUser_Should_Not_Do_Anything_When_PhysicalAddress_Is_Not_Created()
+    {
+        const string firstName = "Ragnvald";
+        const string lastName = "Rumpelo";
+        const string title = "Supperådgiver";
+        const string email = "ragnvald.rumpelo@foo.biz";
+
+        const int companyId = 2;
+        const int departmentId = 3;
+        const string departmentName = "Bar";
+        const int locationId = 4;
+        const string locationName = "Biz";
+        
+        var entraUser = new Microsoft.Graph.Models.User
+        {
+            GivenName = firstName,
+            Surname = lastName,
+            JobTitle = title,
+            CompanyName = "Foo",
+            Department = "Bar",
+            OfficeLocation = "Biz",
+            Mail = email,
+            AccountEnabled = true,
+            Id = "rr-42",
+            UserPrincipalName = email
+        };
+        
+        var department = new CompanyDepartment
+        {
+            Name = departmentName,
+            Id = departmentId,
+            Created = DateTime.Now.AddDays(-10),
+            CreatedById = 1
+        };
+        
+        var location = new CompanyLocation
+        {
+            Name = locationName,
+            Id = locationId,
+            Created = DateTime.Now.AddDays(-10),
+            CreatedById = 1
+        };
+        
+        var synchronizationResult = new SynchronizationResult();
+
+        _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((false, 0, null));
+        _physicalAddressService.AddNewPhysicalAddress(null, null, null, "Norway").ReturnsNull();
+        
+        var exception = await Record.ExceptionAsync(async () => await _service.CreateUser(entraUser, null, companyId, department, location, synchronizationResult));
+        Assert.Null(exception);
+        
+        Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
+        Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
+        Assert.Equal(1, synchronizationResult.UserHandledCount);
+        Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(1, synchronizationResult.UserErrorCount);
+        Assert.Equal(0, synchronizationResult.UserCreatedCount);
+        Assert.Equal(0, synchronizationResult.UserCreatedCount);
+        
+        await _physicalAddressService.Received(1).AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Is("Norway"));
+        
+        _graphService.DidNotReceive().GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<string>(), Arg.Any<string>());
+        await _phoneNumberService.DidNotReceive().AddNewPhoneNumber(Arg.Any<string>(), Arg.Any<PhoneNumberType>());
+        await _emailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());
+        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+    }
+    
+    [Fact]
+    public async Task CreateUser_Should_Not_Do_Anything_When_PhoneNumber_Is_Not_Created_When_Its_Expected_To_Get_Created()
+    {
+        const string firstName = "Ragnvald";
+        const string lastName = "Rumpelo";
+        const string title = "Supperådgiver";
+        const string email = "ragnvald.rumpelo@foo.biz";
+        const string mobile = "+4781549300";
+
+        const int companyId = 2;
+        const int departmentId = 3;
+        const string departmentName = "Bar";
+        const int locationId = 4;
+        const string locationName = "Biz";
+        
+        var entraUser = new Microsoft.Graph.Models.User
+        {
+            GivenName = firstName,
+            Surname = lastName,
+            JobTitle = title,
+            CompanyName = "Foo",
+            Department = "Bar",
+            OfficeLocation = "Biz",
+            Mail = email,
+            AccountEnabled = true,
+            Id = "rr-42",
+            UserPrincipalName = email
+        };
+        
+        var department = new CompanyDepartment
+        {
+            Name = departmentName,
+            Id = departmentId,
+            Created = DateTime.Now.AddDays(-10),
+            CreatedById = 1
+        };
+        
+        var location = new CompanyLocation
+        {
+            Name = locationName,
+            Id = locationId,
+            Created = DateTime.Now.AddDays(-10),
+            CreatedById = 1
+        };
+
+        var newPhysicalAddress = new PhysicalAddress(null, null, null, "Norway", 10, DateTime.Now, null, null, 42, null);
+        
+        var synchronizationResult = new SynchronizationResult();
+
+        _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((false, 0, null));
+        _physicalAddressService.AddNewPhysicalAddress(null, null, null, "Norway").Returns(newPhysicalAddress);
+        _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").Returns(mobile);
+        _phoneNumberService.AddNewPhoneNumber(mobile, PhoneNumberType.Mobile).ReturnsNull();
+        
+        var exception = await Record.ExceptionAsync(async () => await _service.CreateUser(entraUser, null, companyId, department, location, synchronizationResult));
+        Assert.Null(exception);
+        
+        Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
+        Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
+        Assert.Equal(1, synchronizationResult.UserHandledCount);
+        Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(1, synchronizationResult.UserErrorCount);
+        Assert.Equal(0, synchronizationResult.UserCreatedCount);
+        
+        await _physicalAddressService.Received(1).AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Is("Norway"));
+        _graphService.Received(1).GetCustomSecurityAttribute(Arg.Is(entraUser), Arg.Is("IDM"), Arg.Is("Mobile"));
+        await _phoneNumberService.Received(1).AddNewPhoneNumber(Arg.Is(mobile), Arg.Is(PhoneNumberType.Mobile));
+        
+        await _emailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());
+        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+    }
+    
+    [Fact]
+    public async Task CreateUser_Should_Not_Do_Anything_When_EmailAddress_Is_Not_Created()
+    {
+        const string firstName = "Ragnvald";
+        const string lastName = "Rumpelo";
+        const string title = "Supperådgiver";
+        const string email = "ragnvald.rumpelo@foo.biz";
+        const string mobile = "+4781549300";
+
+        const int companyId = 2;
+        const int departmentId = 3;
+        const string departmentName = "Bar";
+        const int locationId = 4;
+        const string locationName = "Biz";
+        
+        var entraUser = new Microsoft.Graph.Models.User
+        {
+            GivenName = firstName,
+            Surname = lastName,
+            JobTitle = title,
+            CompanyName = "Foo",
+            Department = "Bar",
+            OfficeLocation = "Biz",
+            Mail = email,
+            AccountEnabled = true,
+            Id = "rr-42",
+            UserPrincipalName = email
+        };
+        
+        var department = new CompanyDepartment
+        {
+            Name = departmentName,
+            Id = departmentId,
+            Created = DateTime.Now.AddDays(-10),
+            CreatedById = 1
+        };
+        
+        var location = new CompanyLocation
+        {
+            Name = locationName,
+            Id = locationId,
+            Created = DateTime.Now.AddDays(-10),
+            CreatedById = 1
+        };
+
+        var newPhysicalAddress = new PhysicalAddress(null, null, null, "Norway", 10, DateTime.Now, null, null, 42, null);
+        var newPhoneNumber = new PhoneNumber(mobile, mobile, PhoneNumberType.Mobile, null, 11, DateTime.Now, null, 42, null);
+        
+        var synchronizationResult = new SynchronizationResult();
+
+        _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((false, 0, null));
+        _physicalAddressService.AddNewPhysicalAddress(null, null, null, "Norway").Returns(newPhysicalAddress);
+        _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").Returns(mobile);
+        _phoneNumberService.AddNewPhoneNumber(mobile, PhoneNumberType.Mobile).Returns(newPhoneNumber);
+        
+        var exception = await Record.ExceptionAsync(async () => await _service.CreateUser(entraUser, null, companyId, department, location, synchronizationResult));
+        Assert.Null(exception);
+        
+        Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
+        Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
+        Assert.Equal(1, synchronizationResult.UserHandledCount);
+        Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(1, synchronizationResult.UserErrorCount);
+        Assert.Equal(0, synchronizationResult.UserCreatedCount);
+        
+        await _physicalAddressService.Received(1).AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Is("Norway"));
+        _graphService.Received(1).GetCustomSecurityAttribute(Arg.Is(entraUser), Arg.Is("IDM"), Arg.Is("Mobile"));
+        await _phoneNumberService.Received(1).AddNewPhoneNumber(Arg.Is(mobile), Arg.Is(PhoneNumberType.Mobile));
+        await _emailAddressService.Received(1).AddNewEmailAddress(Arg.Is(entraUser.UserPrincipalName));
+        
+        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+    }
+    
+    [Fact]
+    public async Task CreateUser_Should_Not_Do_Anything_When_User_Is_Not_Created()
+    {
+        const string firstName = "Ragnvald";
+        const string lastName = "Rumpelo";
+        const string title = "Supperådgiver";
+        const string email = "ragnvald.rumpelo@foo.biz";
+        const string mobile = "+4781549300";
+
+        const int companyId = 2;
+        const int departmentId = 3;
+        const string departmentName = "Bar";
+        const int locationId = 4;
+        const string locationName = "Biz";
+        
+        var entraUser = new Microsoft.Graph.Models.User
+        {
+            GivenName = firstName,
+            Surname = lastName,
+            JobTitle = title,
+            CompanyName = "Foo",
+            Department = "Bar",
+            OfficeLocation = "Biz",
+            Mail = email,
+            AccountEnabled = true,
+            Id = "rr-42",
+            UserPrincipalName = email
+        };
+        
+        var department = new CompanyDepartment
+        {
+            Name = departmentName,
+            Id = departmentId,
+            Created = DateTime.Now.AddDays(-10),
+            CreatedById = 1
+        };
+        
+        var location = new CompanyLocation
+        {
+            Name = locationName,
+            Id = locationId,
+            Created = DateTime.Now.AddDays(-10),
+            CreatedById = 1
+        };
+
+        var newPhysicalAddress = new PhysicalAddress(null, null, null, "Norway", 10, DateTime.Now, null, null, 42, null);
+        var newPhoneNumber = new PhoneNumber(mobile, mobile, PhoneNumberType.Mobile, null, 11, DateTime.Now, null, 42, null);
+        var newEmailAddress = new EmailAddress
+        {
+            Email = email,
+            Id = 12,
+            Created = DateTime.Now,
+            CreatedById = 42
+        };
+        
+        var synchronizationResult = new SynchronizationResult();
+
+        _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((false, 0, null));
+        _physicalAddressService.AddNewPhysicalAddress(null, null, null, "Norway").Returns(newPhysicalAddress);
+        _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").Returns(mobile);
+        _phoneNumberService.AddNewPhoneNumber(mobile, PhoneNumberType.Mobile).Returns(newPhoneNumber);
+        _emailAddressService.AddNewEmailAddress(entraUser.UserPrincipalName).Returns(newEmailAddress);
+        
+        var exception = await Record.ExceptionAsync(async () => await _service.CreateUser(entraUser, null, companyId, department, location, synchronizationResult));
+        Assert.Null(exception);
+        
+        Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
+        Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
+        Assert.Equal(1, synchronizationResult.UserHandledCount);
+        Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(1, synchronizationResult.UserErrorCount);
+        Assert.Equal(0, synchronizationResult.UserCreatedCount);
+        
+        await _physicalAddressService.Received(1).AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Is("Norway"));
+        _graphService.Received(1).GetCustomSecurityAttribute(Arg.Is(entraUser), Arg.Is("IDM"), Arg.Is("Mobile"));
+        await _phoneNumberService.Received(1).AddNewPhoneNumber(Arg.Is(mobile), Arg.Is(PhoneNumberType.Mobile));
+        await _emailAddressService.Received(1).AddNewEmailAddress(Arg.Is(entraUser.UserPrincipalName));
+        await _pureserviceUserService.Received(1).CreateNewUser(Arg.Is(entraUser), Arg.Any<int?>(), Arg.Is(companyId), Arg.Is(newPhysicalAddress.Id), Arg.Is(newPhoneNumber.Id), Arg.Is(newEmailAddress.Id));
+        
+        await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+    }
+    
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CreateUser_Should_Create_User_But_Not_Update_Department_And_Location(bool hasLocation)
+    {
+        const string firstName = "Ragnvald";
+        const string lastName = "Rumpelo";
+        const string title = "Supperådgiver";
+        const string email = "ragnvald.rumpelo@foo.biz";
+        const string mobile = "+4781549300";
+
+        const int companyId = 2;
+        const int departmentId = 3;
+        const string departmentName = "Bar";
+        const int locationId = 4;
+        const string locationName = "Biz";
+        
+        var entraUser = new Microsoft.Graph.Models.User
+        {
+            GivenName = firstName,
+            Surname = lastName,
+            JobTitle = title,
+            CompanyName = "Foo",
+            Department = "Bar",
+            OfficeLocation = hasLocation ? "Biz" : null,
+            Mail = email,
+            AccountEnabled = true,
+            Id = "rr-42",
+            UserPrincipalName = email
+        };
+        
+        var department = new CompanyDepartment
+        {
+            Name = departmentName,
+            Id = departmentId,
+            Created = DateTime.Now.AddDays(-10),
+            CreatedById = 1
+        };
+        
+        var location = hasLocation
+            ? new CompanyLocation
+                {
+                    Name = locationName,
+                    Id = locationId,
+                    Created = DateTime.Now.AddDays(-10),
+                    CreatedById = 1
+                }
+            : null;
+
+        var newPhysicalAddress = new PhysicalAddress(null, null, null, "Norway", 10, DateTime.Now, null, null, 42, null);
+        var newPhoneNumber = new PhoneNumber(mobile, mobile, PhoneNumberType.Mobile, null, 11, DateTime.Now, null, 42, null);
+        var newEmailAddress = new EmailAddress
+        {
+            Email = email,
+            Id = 12,
+            Created = DateTime.Now,
+            CreatedById = 42
+        };
+
+        var newPureserviceUser = new User
+        {
+            FirstName = firstName,
+            LastName = lastName,
+            Title = title,
+            Disabled = false,
+            Id = 42,
+            Created = DateTime.Now,
+            CreatedById = 1,
+            FlushNotifications = true,
+            HighlightNotifications = true,
+            ImportUniqueKey = entraUser.Id,
+            IsAnonymized = false,
+            IsSuperuser = false,
+            Role = UserRole.Enduser,
+            Unavailable = false,
+            CompanyId = companyId,
+            CompanyDepartmentId = departmentId,
+            CompanyLocationId = hasLocation ? locationId : null
+        };
+        
+        var synchronizationResult = new SynchronizationResult();
+
+        _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((false, 0, null));
+        _physicalAddressService.AddNewPhysicalAddress(null, null, null, "Norway").Returns(newPhysicalAddress);
+        _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").Returns(mobile);
+        _phoneNumberService.AddNewPhoneNumber(mobile, PhoneNumberType.Mobile).Returns(newPhoneNumber);
+        _emailAddressService.AddNewEmailAddress(entraUser.UserPrincipalName).Returns(newEmailAddress);
+        _pureserviceUserService.CreateNewUser(entraUser, null, companyId, newPhysicalAddress.Id, newPhoneNumber.Id, newEmailAddress.Id).Returns(newPureserviceUser);
+        
+        var exception = await Record.ExceptionAsync(async () => await _service.CreateUser(entraUser, null, companyId, department, location, synchronizationResult));
+        Assert.Null(exception);
+        
+        Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
+        Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
+        Assert.Equal(1, synchronizationResult.UserHandledCount);
+        Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserErrorCount);
+        Assert.Equal(1, synchronizationResult.UserCreatedCount);
+        
+        await _physicalAddressService.Received(1).AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Is("Norway"));
+        _graphService.Received(1).GetCustomSecurityAttribute(Arg.Is(entraUser), Arg.Is("IDM"), Arg.Is("Mobile"));
+        await _phoneNumberService.Received(1).AddNewPhoneNumber(Arg.Is(mobile), Arg.Is(PhoneNumberType.Mobile));
+        await _emailAddressService.Received(1).AddNewEmailAddress(Arg.Is(entraUser.UserPrincipalName));
+        await _pureserviceUserService.Received(1).CreateNewUser(Arg.Is(entraUser), Arg.Any<int?>(), Arg.Is(companyId), Arg.Is(newPhysicalAddress.Id), Arg.Is(newPhoneNumber.Id), Arg.Is(newEmailAddress.Id));
+        
+        if (hasLocation)
+        {
+            await _pureserviceUserService.Received(1).UpdateDepartmentAndLocation(Arg.Is(newPureserviceUser.Id), Arg.Is(departmentId), Arg.Is(locationId));
+            return;
+        }
+        
+        await _pureserviceUserService.Received(1).UpdateDepartmentAndLocation(Arg.Is(newPureserviceUser.Id), Arg.Is(departmentId), Arg.Is((int?)null));
     }
 }
