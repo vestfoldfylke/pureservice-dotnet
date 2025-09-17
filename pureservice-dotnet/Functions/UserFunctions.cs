@@ -410,7 +410,7 @@ public class UserFunctions
 
         if (entraUser.CompanyName is null && entraUser.AccountEnabled.HasValue && entraUser.AccountEnabled.Value)
         {
-            _logger.LogError("Entra user with Id {EntraId} has no company name. Skipping", entraUser.Id);
+            _logger.LogWarning("Entra user with Id {EntraId} has no company name. Skipping", entraUser.Id);
             synchronizationResult.UserMissingCompanyNameCount++;
             return (null, null, true);
         }
