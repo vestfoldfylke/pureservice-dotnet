@@ -98,6 +98,10 @@ public class UserFunctionsTests
             [], [], synchronizationResult));
         Assert.Null(exception);
         
+        Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
+        Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(0, synchronizationResult.UserHandledCount);
         Assert.Equal(0, synchronizationResult.UserUpToDateCount);
         Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
@@ -223,6 +227,10 @@ public class UserFunctionsTests
             departments, locations, synchronizationResult));
         Assert.Null(exception);
         
+        Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
+        Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(1, synchronizationResult.UserHandledCount);
         Assert.Equal(0, synchronizationResult.UserUpToDateCount);
         Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
@@ -351,6 +359,10 @@ public class UserFunctionsTests
             departments, locations, synchronizationResult));
         Assert.Null(exception);
         
+        Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
+        Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(1, synchronizationResult.UserHandledCount);
         Assert.Equal(0, synchronizationResult.UserUpToDateCount);
         Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
@@ -564,6 +576,10 @@ public class UserFunctionsTests
             pureserviceManagerUser, companies, departments, locations, synchronizationResult));
         Assert.Null(exception);
         
+        Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
+        Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(1, synchronizationResult.UserHandledCount);
         Assert.Equal(0, synchronizationResult.UserUpToDateCount);
         Assert.Equal(1, synchronizationResult.UserBasicPropertiesUpdatedCount);
@@ -788,6 +804,10 @@ public class UserFunctionsTests
             pureserviceManagerUser, companies, departments, locations, synchronizationResult));
         Assert.Null(exception);
         
+        Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
+        Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(1, synchronizationResult.UserHandledCount);
         Assert.Equal(0, synchronizationResult.UserUpToDateCount);
         Assert.Equal(1, synchronizationResult.UserBasicPropertiesUpdatedCount);
@@ -1018,6 +1038,10 @@ public class UserFunctionsTests
             pureserviceManagerUser, companies, departments, locations, synchronizationResult));
         Assert.Null(exception);
         
+        Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
+        Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(1, synchronizationResult.UserHandledCount);
         Assert.Equal(0, synchronizationResult.UserUpToDateCount);
         Assert.Equal(1, synchronizationResult.UserBasicPropertiesUpdatedCount);
@@ -1240,6 +1264,10 @@ public class UserFunctionsTests
             pureserviceManagerUser, companies, departments, locations, synchronizationResult));
         Assert.Null(exception);
         
+        Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
+        Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(1, synchronizationResult.UserHandledCount);
         Assert.Equal(0, synchronizationResult.UserUpToDateCount);
         Assert.Equal(1, synchronizationResult.UserBasicPropertiesUpdatedCount);
@@ -1393,6 +1421,10 @@ public class UserFunctionsTests
             departments, locations, synchronizationResult));
         Assert.Null(exception);
         
+        Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
+        Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(1, synchronizationResult.UserHandledCount);
         Assert.Equal(1, synchronizationResult.UserUpToDateCount);
         Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
