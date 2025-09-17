@@ -208,10 +208,12 @@ public class UserFunctions
             synchronizationResult.UserErrorCount++;
             return;
         }
+        
+        synchronizationResult.UserCreatedCount++;
 
-        if ((department is not null || location is not null) && await _pureserviceUserService.UpdateDepartmentAndLocation(pureserviceUser.Id, department?.Id, location?.Id))
+        if (department is not null || location is not null)
         {
-            synchronizationResult.UserCreatedCount++;
+            await _pureserviceUserService.UpdateDepartmentAndLocation(pureserviceUser.Id, department?.Id, location?.Id);
         }
     }
     
