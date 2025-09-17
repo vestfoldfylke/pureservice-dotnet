@@ -109,6 +109,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
+        Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
         _pureserviceUserService.DidNotReceive().NeedsBasicUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>());
         _pureserviceUserService.DidNotReceive().NeedsCompanyUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>());
@@ -238,6 +239,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
+        Assert.Equal(0, synchronizationResult.UserCreatedCount);
 
         Assert.Single(companies);
         Assert.Single(departments);
@@ -370,6 +372,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
+        Assert.Equal(0, synchronizationResult.UserCreatedCount);
 
         Assert.Single(companies);
         Assert.Single(departments);
@@ -587,6 +590,7 @@ public class UserFunctionsTests
         Assert.Equal(1, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
+        Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
         Assert.Equal(2, companies.Count);
         Assert.Equal(2, departments.Count);
@@ -815,6 +819,7 @@ public class UserFunctionsTests
         Assert.Equal(1, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
+        Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
         Assert.Single(companies);
         Assert.Equal(2, departments.Count);
@@ -1049,6 +1054,7 @@ public class UserFunctionsTests
         Assert.Equal(1, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
+        Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
         Assert.Single(companies);
         Assert.Equal(2, departments.Count);
@@ -1275,6 +1281,7 @@ public class UserFunctionsTests
         Assert.Equal(1, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
+        Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
         Assert.Equal(2, companies.Count);
         Assert.Single(departments);
@@ -1432,6 +1439,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
+        Assert.Equal(0, synchronizationResult.UserCreatedCount);
 
         Assert.Single(companies);
         Assert.Single(departments);
