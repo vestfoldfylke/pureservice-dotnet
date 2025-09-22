@@ -45,17 +45,17 @@ public class PureserviceUserService : IPureserviceUserService
     {
         var payload = GetNewUserPayload(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId);
         
-        _logger.LogInformation("Creating new pureservice user with ImportUniqueKey {ImportUniqueKey}", entraUser.Id);
+        _logger.LogInformation("Creating new Pureservice user with ImportUniqueKey {ImportUniqueKey}", entraUser.Id);
         var result = await _pureserviceCaller.PostAsync<User>($"{BasePath}?include=company,company.departments,company.locations,emailaddress,language,phonenumbers", payload);
 
         if (result is not null)
         {
-            _logger.LogInformation("Successfully created new pureservice user with ImportUniqueKey {ImportUniqueKey} and UserId {UserId}", result.ImportUniqueKey, result.Id);
+            _logger.LogInformation("Successfully created new Pureservice user with ImportUniqueKey {ImportUniqueKey} and UserId {UserId}", result.ImportUniqueKey, result.Id);
             _metricsService.Count($"{Constants.MetricsPrefix}_CreatedNewUser", "Number of users created", (Constants.MetricsResultLabelName, Constants.MetricsResultSuccessLabelValue));
             return result;
         }
         
-        _logger.LogError("Failed to create new pureservice user with ImportUniqueKey {ImportUniqueKey}: {@Payload}", entraUser.Id, payload);
+        _logger.LogError("Failed to create new Pureservice user with ImportUniqueKey {ImportUniqueKey}: {@Payload}", entraUser.Id, payload);
         _metricsService.Count($"{Constants.MetricsPrefix}_CreatedNewUser", "Number of users created", (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
         return null;
     }
@@ -79,7 +79,8 @@ public class PureserviceUserService : IPureserviceUserService
             CompanyLocations = [],
             EmailAddresses = [],
             Languages = [],
-            PhoneNumbers = []
+            PhoneNumbers = [],
+            PhysicalAddresses = []
         });
 
         var currentStart = start;
@@ -159,13 +160,17 @@ public class PureserviceUserService : IPureserviceUserService
                 userList.Linked.PhoneNumbers.AddRange(result.Linked.PhoneNumbers);
             }
             
+            if (result.Linked?.PhysicalAddresses is not null && userList.Linked?.PhysicalAddresses is not null)
+            {
+                _logger.LogDebug("Fetched {Count} physical addresses linked to users", result.Linked.PhysicalAddresses.Count);
+                userList.Linked.PhysicalAddresses.AddRange(result.Linked.PhysicalAddresses);
+            }
+            
             if (result.Users.Count == 0)
             {
-                _logger.LogInformation("Returning {UserCount} pureservice users, {CompanyCount} companies, {DepartmentCount} departments, {LocationCount} locations, {EmailAddressCount} email addresses, {LanguageCount} languages and {PhoneNumberCount} phone numbers",
-                    userList.Users.Count, userList.Linked?.Companies?.Count ?? 0,
-                    userList.Linked?.CompanyDepartments?.Count ?? 0, userList.Linked?.CompanyLocations?.Count ?? 0,
-                    userList.Linked?.EmailAddresses?.Count ?? 0, userList.Linked?.Languages?.Count ?? 0,
-                    userList.Linked?.PhoneNumbers?.Count ?? 0);
+                _logger.LogInformation("Returning {UserCount} Pureservice users, {CompanyCount} companies, {DepartmentCount} departments, {LocationCount} locations, {EmailAddressCount} email addresses, {LanguageCount} languages, {PhoneNumberCount} phone numbers and {PhysicalAddressCount} physical addresses",
+                    userList.Users.Count, userList.Linked?.Companies?.Count ?? 0, userList.Linked?.CompanyDepartments?.Count ?? 0, userList.Linked?.CompanyLocations?.Count ?? 0,
+                    userList.Linked?.EmailAddresses?.Count ?? 0, userList.Linked?.Languages?.Count ?? 0, userList.Linked?.PhoneNumbers?.Count ?? 0, userList.Linked?.PhysicalAddresses?.Count ?? 0);
                 return userList;
             }
 
@@ -173,8 +178,9 @@ public class PureserviceUserService : IPureserviceUserService
             _logger.LogDebug("Preparing to fetch next batch of users starting from start {Start} and limit {Limit}", currentStart, limit);
         }
         
-        _logger.LogWarning("Reached outside of while somehow 😱 Returning {UserCount} user count with {EmailAddressCount} emailaddresses and {PhoneNumberCount} phone numbers",
-            userList.Users.Count, userList.Linked?.EmailAddresses?.Count ?? 0, userList.Linked?.PhoneNumbers?.Count ?? 0);
+        _logger.LogWarning("Reached outside of while somehow 😱 Returning {UserCount} Pureservice users, {CompanyCount} companies, {DepartmentCount} departments, {LocationCount} locations, {EmailAddressCount} email addresses, {LanguageCount} languages, {PhoneNumberCount} phone numbers and {PhysicalAddressCount} physical addresses",
+            userList.Users.Count, userList.Linked?.Companies?.Count ?? 0, userList.Linked?.CompanyDepartments?.Count ?? 0, userList.Linked?.CompanyLocations?.Count ?? 0,
+            userList.Linked?.EmailAddresses?.Count ?? 0, userList.Linked?.Languages?.Count ?? 0, userList.Linked?.PhoneNumbers?.Count ?? 0, userList.Linked?.PhysicalAddresses?.Count ?? 0);
         return userList;
     }
 
@@ -519,8 +525,7 @@ public class PureserviceUserService : IPureserviceUserService
             : null;
         
         var wantedDepartment = entraUser.Department is not null
-            ? companyDepartments.Find(d => d.Name.Equals(entraUser.Department, StringComparison.OrdinalIgnoreCase) &&
-                                company.Links?.Departments?.Ids is not null && company.Links.Departments.Ids.Contains(d.Id))
+            ? companyDepartments.Find(d => d.Name.Equals(entraUser.Department, StringComparison.OrdinalIgnoreCase) && d.CompanyId == company.Id)
             : null;
         
         if (department is null)
@@ -580,8 +585,7 @@ public class PureserviceUserService : IPureserviceUserService
             : null;
         
         var wantedLocation = entraUser.OfficeLocation is not null
-            ? companyLocations.Find(l => l.Name.Equals(entraUser.OfficeLocation, StringComparison.OrdinalIgnoreCase) &&
-                                company.Links?.Locations?.Ids is not null && company.Links.Locations.Ids.Contains(l.Id))
+            ? companyLocations.Find(l => l.Name.Equals(entraUser.OfficeLocation, StringComparison.OrdinalIgnoreCase) && l.CompanyId == company.Id)
             : null;
         
         if (location is null)

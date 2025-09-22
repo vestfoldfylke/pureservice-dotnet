@@ -54,20 +54,21 @@ public class UserFunctions
         
         _logger.LogInformation("Retrieved {EmployeeCount} employees, {StudentCount} students, total {TotalCount} from Entra", entraEmployees.Count, entraStudents.Count, entraUsers.Count);
         
-        var pureserviceUsers = await _pureserviceUserService.GetUsers(["company", "company.departments", "company.locations", "emailaddress", "language", "phonenumbers"], includeInactiveUsers: true);
+        var pureserviceUsers = await _pureserviceUserService.GetUsers(["emailaddress", "phonenumbers"], includeInactiveUsers: true);
 
-        if (pureserviceUsers.Linked?.Companies is null || pureserviceUsers.Linked?.CompanyDepartments is null || pureserviceUsers.Linked?.CompanyLocations is null ||
-            pureserviceUsers.Linked?.EmailAddresses is null || pureserviceUsers.Linked?.Languages is null || pureserviceUsers.Linked?.PhoneNumbers is null)
+        if (pureserviceUsers.Linked?.EmailAddresses is null || pureserviceUsers.Linked?.PhoneNumbers is null)
         {
             _logger.LogError("Expected linked results were not found in user list");
             return;
         }
 
-        var synchronizationResult = new SynchronizationResult();
+        var companies = await _pureserviceCompanyService.GetCompanies();
+        var departments = await _pureserviceCompanyService.GetDepartments();
+        var locations = await _pureserviceCompanyService.GetLocations();
         
-        var companies = pureserviceUsers.Linked.Companies;
-        var departments = pureserviceUsers.Linked.CompanyDepartments;
-        var locations = pureserviceUsers.Linked.CompanyLocations;
+        _logger.LogInformation("Retrieved {CompanyCount} companies, {DepartmentCount} departments and {LocationCount} locations from Pureservice", companies.Count, departments.Count, locations.Count);
+        
+        var synchronizationResult = new SynchronizationResult();
         
         // create or update users
         foreach (var entraUser in entraUsers)
@@ -98,7 +99,7 @@ public class UserFunctions
                         company = await _pureserviceCompanyService.AddCompany(entraUser.CompanyName!);
                         if (company is null)
                         {
-                            _logger.LogError("CompanyName {CompanyName} for new pureservice user with EntraId {EntraId} not created in Pureservice. User will not be created", entraUser.CompanyName,
+                            _logger.LogError("CompanyName {CompanyName} for new Pureservice user with EntraId {EntraId} not created in Pureservice. User will not be created", entraUser.CompanyName,
                                 entraUser.Id);
                             synchronizationResult.CompanyMissingInPureserviceCount++;
                             continue;
@@ -136,7 +137,7 @@ public class UserFunctions
             }
         }
         
-        // TODO: Loop through pureservice users not existing in entra and disable them (should we anonymize them as well, if so, how?)
+        // TODO: Loop through Pureservice users not existing in entra and disable them (should we anonymize them as well, if so, how?)
 
         _logger.LogInformation("UserFunctions_Synchronize finished: {@SynchronizationResult}", synchronizationResult);
     }
@@ -168,7 +169,7 @@ public class UserFunctions
 
         if (entraUser.Manager?.Id is not null && pureserviceManagerUser is null)
         {
-            _logger.LogInformation("Manager with EntraId {EntraManagerId} for new pureservice user with EntraId {EntraId} not found in Pureservice. Manager will be updated on user on next sweep",
+            _logger.LogInformation("Manager with EntraId {EntraManagerId} for new Pureservice user with EntraId {EntraId} not found in Pureservice. Manager will be updated on user on next sweep",
                 entraUser.Manager.Id, entraUser.Id);
         }
         
@@ -176,7 +177,7 @@ public class UserFunctions
         var physicalAddressResult = await _pureservicePhysicalAddressService.AddNewPhysicalAddress(null, null, null, "Norway");
         if (physicalAddressResult is null)
         {
-            _logger.LogError("Failed to create physical address for new pureservice user with EntraId {EntraId}. User will not be created", entraUser.Id);
+            _logger.LogError("Failed to create physical address for new Pureservice user with EntraId {EntraId}. User will not be created", entraUser.Id);
             synchronizationResult.UserErrorCount++;
             return;
         }
@@ -187,7 +188,7 @@ public class UserFunctions
             : null;
         if (pureservicePhoneNumber is null && !string.IsNullOrWhiteSpace(entraPhoneNumber))
         {
-            _logger.LogError("Failed to create phone number for new pureservice user with EntraId {EntraId} and PhoneNumber {PhoneNumber}. User will not be created", entraUser.Id, entraPhoneNumber);
+            _logger.LogError("Failed to create phone number for new Pureservice user with EntraId {EntraId} and PhoneNumber {PhoneNumber}. User will not be created", entraUser.Id, entraPhoneNumber);
             synchronizationResult.UserErrorCount++;
             return;
         }
@@ -196,7 +197,7 @@ public class UserFunctions
         var pureserviceEmailAddress = await _pureserviceEmailAddressService.AddNewEmailAddress(entraUser.UserPrincipalName!);
         if (pureserviceEmailAddress is null)
         {
-            _logger.LogError("Failed to create email address for new pureservice user with EntraId {EntraId} and Email {Email}. User will not be created", entraUser.Id, entraUser.Mail);
+            _logger.LogError("Failed to create email address for new Pureservice user with EntraId {EntraId} and Email {Email}. User will not be created", entraUser.Id, entraUser.Mail);
             synchronizationResult.UserErrorCount++;
             return;
         }
@@ -244,7 +245,7 @@ public class UserFunctions
         
         if (entraUser.Manager?.Id is not null && pureserviceManagerUser is null)
         {
-            _logger.LogInformation("Manager with EntraId {EntraManagerId} for pureservice user with UserId {UserId} not found in Pureservice. Manager will be updated on user on next sweep",
+            _logger.LogInformation("Manager with EntraId {EntraManagerId} for Pureservice user with UserId {UserId} not found in Pureservice. Manager will be updated on user on next sweep",
                 entraUser.Manager.Id, pureserviceUser.Id);
         }
         
@@ -357,7 +358,7 @@ public class UserFunctions
         {
             if (phoneNumberUpdate.PhoneNumber is null)
             {
-                _logger.LogError("No phone number exists for pureservice UserId {UserId} and no phone number found in Entra on EntraId {EntraId}. Cannot add empty phone number", pureserviceUser.Id, entraUser.Id);
+                _logger.LogError("No phone number exists for Pureservice UserId {UserId} and no phone number found in Entra on EntraId {EntraId}. Cannot add empty phone number", pureserviceUser.Id, entraUser.Id);
                 return;
             }
             
