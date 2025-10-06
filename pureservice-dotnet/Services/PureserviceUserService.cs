@@ -117,8 +117,7 @@ public class PureserviceUserService : IPureserviceUserService
             result = await _pureserviceCaller.GetAsync<UserList>($"{BasePath}?{queryString}");
             if (result is null)
             {
-                _logger.LogError("No result returned from API from start {Start} with limit {Limit}", currentStart, limit);
-                return userList;
+                throw new InvalidOperationException($"No result returned from Pureservice API from start {currentStart} with limit {limit}");
             }
             
             _logger.LogDebug("Fetched {Count} users starting from {Start} with limit {Limit}", result.Users.Count, currentStart, limit);
