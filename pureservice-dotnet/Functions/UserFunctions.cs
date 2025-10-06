@@ -56,7 +56,7 @@ public class UserFunctions
         
         var pureserviceUsers = await _pureserviceUserService.GetUsers(["credentials", "emailaddress", "phonenumbers"], includeInactiveUsers: true);
 
-        if (pureserviceUsers.Linked?.EmailAddresses is null || pureserviceUsers.Linked?.PhoneNumbers is null)
+        if (pureserviceUsers.Linked?.Credentials is null || pureserviceUsers.Linked?.EmailAddresses is null || pureserviceUsers.Linked?.PhoneNumbers is null)
         {
             _logger.LogError("Expected linked results were not found in user list");
             throw new InvalidOperationException("Expected linked results were not found in user list");
