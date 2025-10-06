@@ -54,7 +54,7 @@ public class UserFunctions
         
         _logger.LogInformation("Retrieved {EmployeeCount} employees, {StudentCount} students, total {TotalCount} from Entra", entraEmployees.Count, entraStudents.Count, entraUsers.Count);
         
-        var pureserviceUsers = await _pureserviceUserService.GetUsers(["emailaddress", "phonenumbers"], includeInactiveUsers: true);
+        var pureserviceUsers = await _pureserviceUserService.GetUsers(["credentials", "emailaddress", "phonenumbers"], includeInactiveUsers: true);
 
         if (pureserviceUsers.Linked?.EmailAddresses is null || pureserviceUsers.Linked?.PhoneNumbers is null)
         {
@@ -124,15 +124,15 @@ public class UserFunctions
                 
                 using (LogContext.PushProperty("UserId", pureserviceUser.Id))
                 {
-                    var (primaryEmailAddress, primaryPhoneNumber, phoneNumberIds) = GetPureserviceUserContactInfo(pureserviceUser, pureserviceUsers, synchronizationResult);
-                    if (primaryEmailAddress is null)
+                    var (credential, primaryEmailAddress, primaryPhoneNumber, phoneNumberIds) = GetPureserviceUserContactInfo(pureserviceUser, pureserviceUsers, synchronizationResult);
+                    if (credential is null || primaryEmailAddress is null)
                     {
                         continue;
                     }
                     
                     var phoneNumbers = pureserviceUsers.Linked.PhoneNumbers.Where(p => phoneNumberIds.Contains(p.Id)).ToList();
 
-                    await UpdateUser(pureserviceUser, entraUser, primaryEmailAddress, primaryPhoneNumber, phoneNumbers, pureserviceManagerUser, companies, departments, locations, synchronizationResult);
+                    await UpdateUser(pureserviceUser, entraUser, credential, primaryEmailAddress, primaryPhoneNumber, phoneNumbers, pureserviceManagerUser, companies, departments, locations, synchronizationResult);
                 }
             }
         }
@@ -218,13 +218,13 @@ public class UserFunctions
         }
     }
     
-    public async Task UpdateUser(User pureserviceUser, Microsoft.Graph.Models.User entraUser, EmailAddress emailAddress, PhoneNumber? phoneNumber, List<PhoneNumber> phoneNumbers,
+    public async Task UpdateUser(User pureserviceUser, Microsoft.Graph.Models.User entraUser, Credential credential, EmailAddress emailAddress, PhoneNumber? phoneNumber, List<PhoneNumber> phoneNumbers,
         User? pureserviceManagerUser, List<Company> companies, List<CompanyDepartment> companyDepartments, List<CompanyLocation> companyLocations, SynchronizationResult synchronizationResult)
     {
-        // BasicProperties, CompanyProperties, EmailAddress, PhoneNumber (maybe add) and PhoneNumber (maybe set as default)
-        // BasicProperties, CompanyProperties, EmailAddress, PhoneNumber (maybe update) and PhoneNumber (maybe set as default)
-        // BasicProperties, CompanyProperties, EmailAddress, PhoneNumber (maybe update)
-        const int expectedRequestCount = 5;
+        // BasicProperties, Username, CompanyProperties, EmailAddress, PhoneNumber (maybe add) and PhoneNumber (maybe set as default)
+        // BasicProperties, Username, CompanyProperties, EmailAddress, PhoneNumber (maybe update) and PhoneNumber (maybe set as default)
+        // BasicProperties, Username, CompanyProperties, EmailAddress, PhoneNumber (maybe update)
+        const int expectedRequestCount = 6;
         var (needsToWait, requestCountLastMinute, secondsToWait) = _pureserviceCaller.NeedsToWait(expectedRequestCount);
         if (needsToWait)
         {
@@ -250,6 +250,8 @@ public class UserFunctions
         }
         
         var basicPropertiesToUpdate = _pureserviceUserService.NeedsBasicUpdate(pureserviceUser, entraUser, pureserviceManagerUser);
+
+        var usernameUpdate = _pureserviceUserService.NeedsUsernameUpdate(credential, entraUser);
         
         var companyUpdate = _pureserviceUserService.NeedsCompanyUpdate(pureserviceUser, entraUser, companies);
         var departmentUpdate = _pureserviceUserService.NeedsDepartmentUpdate(pureserviceUser, entraUser, companies, companyDepartments);
@@ -260,7 +262,7 @@ public class UserFunctions
         var entraPhoneNumber = _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile");
         var phoneNumberUpdate = _pureservicePhoneNumberService.NeedsPhoneNumberUpdate(phoneNumber, entraPhoneNumber);
         
-        if (basicPropertiesToUpdate.Count == 0 && companyUpdate is null && departmentUpdate is null && locationUpdate is null && !updateEmail && !phoneNumberUpdate.Update)
+        if (basicPropertiesToUpdate.Count == 0 && !usernameUpdate.Update && companyUpdate is null && departmentUpdate is null && locationUpdate is null && !updateEmail && !phoneNumberUpdate.Update)
         {
             synchronizationResult.UserUpToDateCount++;
             _logger.LogInformation("User with UserId {UserId} is up to date", pureserviceUser.Id);
@@ -270,6 +272,11 @@ public class UserFunctions
         if (basicPropertiesToUpdate.Count > 0 && await _pureserviceUserService.UpdateBasicProperties(pureserviceUser.Id, basicPropertiesToUpdate))
         {
             synchronizationResult.UserBasicPropertiesUpdatedCount++;
+        }
+        
+        if (usernameUpdate.Update && await _pureserviceUserService.UpdateUsername(pureserviceUser.Id, credential.Id, usernameUpdate.Username!))
+        {
+            synchronizationResult.UserUsernameUpdatedCount++;
         }
 
         if (companyUpdate is not null || departmentUpdate is not null || locationUpdate is not null)
@@ -427,21 +434,37 @@ public class UserFunctions
         return (pureserviceUser, pureserviceManagerUser, false);
     }
 
-    private (EmailAddress? primaryEmailAddress, PhoneNumber? primaryPhoneNumber, List<int> phoneNumberIds) GetPureserviceUserContactInfo(User pureserviceUser, UserList pureserviceUsers,
+    private (Credential? credential, EmailAddress? primaryEmailAddress, PhoneNumber? primaryPhoneNumber, List<int> phoneNumberIds) GetPureserviceUserContactInfo(User pureserviceUser, UserList pureserviceUsers,
         SynchronizationResult synchronizationResult)
     {
         if (pureserviceUser.Links is null)
         {
             _logger.LogError("UserId {UserId} has no links. Skipping", pureserviceUser.Id);
             synchronizationResult.UserErrorCount++;
-            return (null, null, []);
+            return (null, null, null, []);
+        }
+
+        if (pureserviceUser.Links.Credentials is null)
+        {
+            _logger.LogError("UserId {UserId} has no credential. Skipping", pureserviceUser.Id);
+            synchronizationResult.UserMissingCredentialsCount++;
+            return (null, null, null, []);
         }
 
         if (pureserviceUser.Links.EmailAddress is null)
         {
             _logger.LogError("UserId {UserId} has no email address. Skipping", pureserviceUser.Id);
             synchronizationResult.UserMissingEmailAddressCount++;
-            return (null, null, []);
+            return (null, null, null, []);
+        }
+        
+        var credential = pureserviceUsers.Linked!.Credentials!.Find(c => c.Id == pureserviceUser.Links.Credentials.Id);
+        
+        if (credential is null)
+        {
+            _logger.LogError("CredentialsId {CredentialsId} for UserId {UserId} not found in Pureservice. Skipping", pureserviceUser.Links.Credentials.Id, pureserviceUser.Id);
+            synchronizationResult.UserMissingCredentialsCount++;
+            return (null, null, null, []);
         }
 
         var primaryEmailAddress = pureserviceUsers.Linked!.EmailAddresses!.Find(e => e.Id == pureserviceUser.Links.EmailAddress.Id);
@@ -450,7 +473,7 @@ public class UserFunctions
         {
             _logger.LogError("EmailAddressId {EmailAddressId} for UserId {UserId} not found in Pureservice. Skipping", pureserviceUser.Links.EmailAddress.Id, pureserviceUser.Id);
             synchronizationResult.UserMissingEmailAddressCount++;
-            return (null, null, []);
+            return (null, null, null, []);
         }
             
         var primaryPhoneNumber = pureserviceUser.Links.PhoneNumber is not null
@@ -459,7 +482,7 @@ public class UserFunctions
 
         var phoneNumberIds = pureserviceUser.Links.PhoneNumbers?.Ids ?? [];
         
-        return (primaryEmailAddress, primaryPhoneNumber, phoneNumberIds);
+        return (credential, primaryEmailAddress, primaryPhoneNumber, phoneNumberIds);
     }
 
     private async Task<(CompanyUpdateItem? UpdateItem, Company? company)> GetOrCreateCompany(CompanyUpdateItem updateItem)

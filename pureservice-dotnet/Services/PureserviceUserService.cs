@@ -19,11 +19,12 @@ public interface IPureserviceUserService
     CompanyUpdateItem? NeedsCompanyUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies);
     CompanyUpdateItem? NeedsDepartmentUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies, List<CompanyDepartment> companyDepartments);
     CompanyUpdateItem? NeedsLocationUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies, List<CompanyLocation> companyLocations);
+    (bool Update, string? Username) NeedsUsernameUpdate(Credential credential, Microsoft.Graph.Models.User entraUser);
     Task<bool> RegisterPhoneNumberAsDefault(int userId, int phoneNumberId);
-    Task<bool> UpdateBasicProperties(int userId,
-        List<(string PropertyName, (string? StringValue, int? IntValue, bool? BoolValue) PropertyValue)> propertiesToUpdate);
+    Task<bool> UpdateBasicProperties(int userId, List<(string PropertyName, (string? StringValue, int? IntValue, bool? BoolValue) PropertyValue)> propertiesToUpdate);
     Task<bool> UpdateCompanyProperties(int userId, List<CompanyUpdateItem> propertiesToUpdate);
     Task<bool> UpdateDepartmentAndLocation(int userId, int? departmentId, int? locationId);
+    Task<bool> UpdateUsername(int userId, int credentialsId, string username);
 }
 
 public class PureserviceUserService : IPureserviceUserService
@@ -77,6 +78,7 @@ public class PureserviceUserService : IPureserviceUserService
             Companies = [],
             CompanyDepartments = [],
             CompanyLocations = [],
+            Credentials = [],
             EmailAddresses = [],
             Languages = [],
             PhoneNumbers = [],
@@ -142,6 +144,12 @@ public class PureserviceUserService : IPureserviceUserService
                 userList.Linked.CompanyLocations.AddRange(result.Linked.CompanyLocations);
             }
             
+            if (result.Linked?.Credentials is not null && userList.Linked?.Credentials is not null)
+            {
+                _logger.LogDebug("Fetched {Count} credentials linked to users", result.Linked.Credentials.Count);
+                userList.Linked.Credentials.AddRange(result.Linked.Credentials);
+            }
+            
             if (result.Linked?.EmailAddresses is not null && userList.Linked?.EmailAddresses is not null)
             {
                 _logger.LogDebug("Fetched {Count} email addresses linked to users", result.Linked.EmailAddresses.Count);
@@ -168,9 +176,10 @@ public class PureserviceUserService : IPureserviceUserService
             
             if (result.Users.Count == 0)
             {
-                _logger.LogInformation("Returning {UserCount} Pureservice users, {CompanyCount} companies, {DepartmentCount} departments, {LocationCount} locations, {EmailAddressCount} email addresses, {LanguageCount} languages, {PhoneNumberCount} phone numbers and {PhysicalAddressCount} physical addresses",
+                _logger.LogInformation("Returning {UserCount} Pureservice users, {CompanyCount} companies, {DepartmentCount} departments, {LocationCount} locations, {CredentialCount} credentials, {EmailAddressCount} email addresses, {LanguageCount} languages, {PhoneNumberCount} phone numbers and {PhysicalAddressCount} physical addresses",
                     userList.Users.Count, userList.Linked?.Companies?.Count ?? 0, userList.Linked?.CompanyDepartments?.Count ?? 0, userList.Linked?.CompanyLocations?.Count ?? 0,
-                    userList.Linked?.EmailAddresses?.Count ?? 0, userList.Linked?.Languages?.Count ?? 0, userList.Linked?.PhoneNumbers?.Count ?? 0, userList.Linked?.PhysicalAddresses?.Count ?? 0);
+                    userList.Linked?.Credentials?.Count ?? 0, userList.Linked?.EmailAddresses?.Count ?? 0, userList.Linked?.Languages?.Count ?? 0, userList.Linked?.PhoneNumbers?.Count ?? 0,
+                    userList.Linked?.PhysicalAddresses?.Count ?? 0);
                 return userList;
             }
 
@@ -178,9 +187,10 @@ public class PureserviceUserService : IPureserviceUserService
             _logger.LogDebug("Preparing to fetch next batch of users starting from start {Start} and limit {Limit}", currentStart, limit);
         }
         
-        _logger.LogWarning("Reached outside of while somehow 😱 Returning {UserCount} Pureservice users, {CompanyCount} companies, {DepartmentCount} departments, {LocationCount} locations, {EmailAddressCount} email addresses, {LanguageCount} languages, {PhoneNumberCount} phone numbers and {PhysicalAddressCount} physical addresses",
+        _logger.LogWarning("Reached outside of while somehow 😱 Returning {UserCount} Pureservice users, {CompanyCount} companies, {DepartmentCount} departments, {LocationCount} locations, {CredentialCount} credentials, {EmailAddressCount} email addresses, {LanguageCount} languages, {PhoneNumberCount} phone numbers and {PhysicalAddressCount} physical addresses",
             userList.Users.Count, userList.Linked?.Companies?.Count ?? 0, userList.Linked?.CompanyDepartments?.Count ?? 0, userList.Linked?.CompanyLocations?.Count ?? 0,
-            userList.Linked?.EmailAddresses?.Count ?? 0, userList.Linked?.Languages?.Count ?? 0, userList.Linked?.PhoneNumbers?.Count ?? 0, userList.Linked?.PhysicalAddresses?.Count ?? 0);
+            userList.Linked?.Credentials?.Count ?? 0, userList.Linked?.EmailAddresses?.Count ?? 0, userList.Linked?.Languages?.Count ?? 0, userList.Linked?.PhoneNumbers?.Count ?? 0,
+            userList.Linked?.PhysicalAddresses?.Count ?? 0);
         return userList;
     }
 
@@ -250,6 +260,17 @@ public class PureserviceUserService : IPureserviceUserService
         return location.Update
             ? new CompanyUpdateItem("companyLocationId", location.CompanyLocation?.Id, location.Name)
             : null;
+    }
+
+    public (bool Update, string? Username) NeedsUsernameUpdate(Credential credential, Microsoft.Graph.Models.User entraUser)
+    {
+        if (entraUser.UserPrincipalName is not null)
+        {
+            return (!credential.Username.Equals(entraUser.UserPrincipalName, StringComparison.OrdinalIgnoreCase), entraUser.UserPrincipalName);
+        }
+        
+        _logger.LogWarning("UserPrincipalName is null for user with EntraId {EntraId}. Cannot determine if username update is needed.", entraUser.Id);
+        return (false, null);
     }
     
     public async Task<bool> RegisterPhoneNumberAsDefault(int userId, int phoneNumberId)
@@ -387,6 +408,34 @@ public class PureserviceUserService : IPureserviceUserService
         
         _logger.LogError("Failed to update {PropertyCount} company properties on UserId {UserId}: {@Payload}", payload.Count, userId, payload);
         _metricsService.Count($"{Constants.MetricsPrefix}_UpdateDepartmentAndLocation", "Number of department and/or location updates",
+            (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
+        return false;
+    }
+
+    public async Task<bool> UpdateUsername(int userId, int credentialsId, string username)
+    {
+        var payload = new
+        {
+            credentials = new
+            {
+                id = credentialsId,
+                username
+            }
+        };
+        
+        _logger.LogInformation("Updating username with CredentialsId {CredentialsId} for UserId {UserId}", credentialsId, userId);
+        var result = await _pureserviceCaller.PatchAsync($"{BasePath}/{userId}", payload);
+
+        if (result)
+        {
+            _logger.LogInformation("Successfully updated CredentialsId {CredentialsId} for UserId {UserId}", credentialsId, userId);
+            _metricsService.Count($"{Constants.MetricsPrefix}_UpdateUsername", "Number of username updates",
+                (Constants.MetricsResultLabelName, Constants.MetricsResultSuccessLabelValue));
+            return true;
+        }
+        
+        _logger.LogError("Failed to update CredentialsId {CredentialsId} for UserId {UserId}: {@Payload}", credentialsId, userId, payload);
+        _metricsService.Count($"{Constants.MetricsPrefix}_UpdateUsername", "Number of username updates",
             (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
         return false;
     }

@@ -10,6 +10,7 @@ public class Linked
     public List<CompanyLocation>? CompanyLocations { get; init; }
     [JsonPropertyName("companydepartments")]
     public List<CompanyDepartment>? CompanyDepartments { get; init; }
+    public List<Credential>? Credentials { get; init; }
     [JsonPropertyName("emailaddresses")]
     public List<EmailAddress>? EmailAddresses { get; init; }
     public List<Language>? Languages { get; init; }

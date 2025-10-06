@@ -4,7 +4,7 @@ Synchronization service to add / update / disable / enable user objects in Pures
 
 ## Properties handled on employees from `Entra ID`
 
-| Property in Pureservice | Property in Source | Description                                 | Category     | Type   | Default Value |
+| Property in Pureservice | Property in Source | Description                                  | Category     | Type   | Default Value |
 |------------------------|--------------------|----------------------------------------------|--------------|--------|---------------|
 | firstName              | givenName          | First name                                   | basic        | string | null          |
 | lastName               | surname            | Last name                                    | basic        | string | null          |
@@ -19,7 +19,7 @@ Synchronization service to add / update / disable / enable user objects in Pures
 | languageId             | preferredLanguage  | Language (set to Norwegian for now)          | basic        | int    | Norwegian     |
 | role                   |                    | Role (UserRole) (only set on creation)       | basic        | int    | Sluttbruker   |
 | importUniqueKey        | id                 | Unique key for import (only set on creation) | basic        | int    | null          |
-| username               | userPrincipalName  | Username (only set on creation)              | basic        | int    | null          |
+| username               | userPrincipalName  | Username (update only works for Sluttbruker) | basic        | int    | null          |
 
 ## Properties handled on students from `Entra ID`
 
@@ -37,7 +37,7 @@ Synchronization service to add / update / disable / enable user objects in Pures
 | languageId             | preferredLanguage  | Language (set to Norwegian for now)          | basic        | int    | Norwegian     |
 | role                   |                    | Role (UserRole) (only set on creation)       | basic        | int    | Sluttbruker   |
 | importUniqueKey        | id                 | Unique key for import (only set on creation) | basic        | int    | null          |
-| username               | userPrincipalName  | Username (only set on creation)              | basic        | int    | null          |
+| username               | userPrincipalName  | Username (update only works for Sluttbruker) | basic        | int    | null          |
 
 ## Setup
 
