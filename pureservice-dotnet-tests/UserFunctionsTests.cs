@@ -183,6 +183,13 @@ public class UserFunctionsTests
             Created = DateTime.Now.AddDays(-10),
             CreatedById = 1
         };
+
+        var credential = new Credential
+        {
+            Username = email,
+            Created = DateTime.Now.AddDays(-5),
+            Id = 44
+        };
         
         var needsToWait = expectedRequestCount + requestCountLastMinute > maxRequestsPerMinute;
         
@@ -190,16 +197,18 @@ public class UserFunctionsTests
 
         _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((needsToWait, requestCountLastMinute, null));
         
-        var exception = await Record.ExceptionAsync(async () => await _service.UpdateUser(pureserviceUser, entraUser, emailAddress, null, [], null, [],
-            [], [], synchronizationResult));
+        var exception = await Record.ExceptionAsync(async () => await _service.UpdateUser(pureserviceUser, entraUser, credential, emailAddress, null, [],
+            null, [], [], [], synchronizationResult));
         Assert.Null(exception);
         
         Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCredentialsCount);
         Assert.Equal(0, synchronizationResult.UserDisabledCount);
         Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
         Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(0, synchronizationResult.UserHandledCount);
         Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
@@ -208,12 +217,14 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
         _pureserviceUserService.DidNotReceive().NeedsBasicUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>());
+        _pureserviceUserService.DidNotReceive().NeedsUsernameUpdate(Arg.Any<Credential>(), Arg.Any<Microsoft.Graph.Models.User>());
         _pureserviceUserService.DidNotReceive().NeedsCompanyUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>());
         _pureserviceUserService.DidNotReceive().NeedsDepartmentUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>(), Arg.Any<List<CompanyDepartment>>());
         _pureserviceUserService.DidNotReceive().NeedsLocationUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>(), Arg.Any<List<CompanyLocation>>());
         _graphService.DidNotReceive().GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<string>(), Arg.Any<string>());
         _phoneNumberService.DidNotReceive().NeedsPhoneNumberUpdate(Arg.Any<PhoneNumber>(), Arg.Any<string>());
         await _pureserviceUserService.DidNotReceive().UpdateBasicProperties(Arg.Any<int>(), Arg.Any<List<(string, (string?, int?, bool?))>>());
+        await _pureserviceUserService.DidNotReceive().UpdateUsername(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
         await _pureserviceUserService.DidNotReceive().UpdateCompanyProperties(Arg.Any<int>(), Arg.Any<List<CompanyUpdateItem>>());
         await _emailAddressService.DidNotReceive().UpdateEmailAddress(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<int>());
         await _pureserviceUserService.DidNotReceive().RegisterPhoneNumberAsDefault(Arg.Any<int>(), Arg.Any<int>());
@@ -275,6 +286,13 @@ public class UserFunctionsTests
             Created = DateTime.Now.AddDays(-10),
             CreatedById = 1
         };
+        
+        var credential = new Credential
+        {
+            Username = email,
+            Created = DateTime.Now.AddDays(-5),
+            Id = 44
+        };
 
         var companies = new List<Company>
         {
@@ -314,22 +332,25 @@ public class UserFunctionsTests
 
         _pureserviceCaller.NeedsToWait(5).Returns((false, 0, null));
         _pureserviceUserService.NeedsBasicUpdate(pureserviceUser, entraUser).Returns([]);
+        _pureserviceUserService.NeedsUsernameUpdate(credential, entraUser).Returns((false, null));
         _pureserviceUserService.NeedsCompanyUpdate(pureserviceUser, entraUser, companies).Returns(new CompanyUpdateItem("companyId", companyId));
         _pureserviceUserService.NeedsDepartmentUpdate(pureserviceUser, entraUser, companies, departments).Returns(new CompanyUpdateItem("companyDepartmentId", departmentId));
         _pureserviceUserService.NeedsLocationUpdate(pureserviceUser, entraUser, companies, locations).Returns(new CompanyUpdateItem("companyLocationId", locationId));
         _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").ReturnsNull();
         _phoneNumberService.NeedsPhoneNumberUpdate(null, null).Returns((false, null));
         
-        var exception = await Record.ExceptionAsync(async () => await _service.UpdateUser(pureserviceUser, entraUser, emailAddress, null, [], null, companies,
+        var exception = await Record.ExceptionAsync(async () => await _service.UpdateUser(pureserviceUser, entraUser, credential, emailAddress, null, [], null, companies,
             departments, locations, synchronizationResult));
         Assert.Null(exception);
         
         Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCredentialsCount);
         Assert.Equal(0, synchronizationResult.UserDisabledCount);
         Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
         Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(1, synchronizationResult.UserHandledCount);
         Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserCompanyPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
@@ -347,6 +368,7 @@ public class UserFunctionsTests
             cui.Exists(c => c.PropertyName == "companyId" && c.Id == companyId)));
         
         await _pureserviceUserService.DidNotReceive().UpdateBasicProperties(Arg.Any<int>(), Arg.Any<List<(string, (string?, int?, bool?))>>());
+        await _pureserviceUserService.DidNotReceive().UpdateUsername(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
         await _emailAddressService.DidNotReceive().UpdateEmailAddress(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<int>());
         await _pureserviceUserService.DidNotReceive().RegisterPhoneNumberAsDefault(Arg.Any<int>(), Arg.Any<int>());
         await _phoneNumberService.DidNotReceive().AddNewPhoneNumberAndLinkToUser(Arg.Any<string>(), Arg.Any<PhoneNumberType>(), Arg.Any<int>());
@@ -408,6 +430,13 @@ public class UserFunctionsTests
             Created = DateTime.Now.AddDays(-10),
             CreatedById = 1
         };
+        
+        var credential = new Credential
+        {
+            Username = email,
+            Created = DateTime.Now.AddDays(-5),
+            Id = 44
+        };
 
         var companies = new List<Company>
         {
@@ -447,22 +476,25 @@ public class UserFunctionsTests
 
         _pureserviceCaller.NeedsToWait(5).Returns((false, 0, null));
         _pureserviceUserService.NeedsBasicUpdate(pureserviceUser, entraUser).Returns([]);
+        _pureserviceUserService.NeedsUsernameUpdate(credential, entraUser).Returns((false, null));
         _pureserviceUserService.NeedsCompanyUpdate(pureserviceUser, entraUser, companies).ReturnsNull();
         _pureserviceUserService.NeedsDepartmentUpdate(pureserviceUser, entraUser, companies, departments).Returns(new CompanyUpdateItem("companyDepartmentId", departmentId));
         _pureserviceUserService.NeedsLocationUpdate(pureserviceUser, entraUser, companies, locations).Returns(new CompanyUpdateItem("companyLocationId", locationId));
         _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").ReturnsNull();
         _phoneNumberService.NeedsPhoneNumberUpdate(null, null).Returns((false, null));
         
-        var exception = await Record.ExceptionAsync(async () => await _service.UpdateUser(pureserviceUser, entraUser, emailAddress, null, [], null, companies,
+        var exception = await Record.ExceptionAsync(async () => await _service.UpdateUser(pureserviceUser, entraUser, credential, emailAddress, null, [], null, companies,
             departments, locations, synchronizationResult));
         Assert.Null(exception);
         
         Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCredentialsCount);
         Assert.Equal(0, synchronizationResult.UserDisabledCount);
         Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
         Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(1, synchronizationResult.UserHandledCount);
         Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserCompanyPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
@@ -480,6 +512,7 @@ public class UserFunctionsTests
             cui.Exists(c => c.PropertyName == "companyLocationId" && c.Id == locationId)));
         
         await _pureserviceUserService.DidNotReceive().UpdateBasicProperties(Arg.Any<int>(), Arg.Any<List<(string, (string?, int?, bool?))>>());
+        await _pureserviceUserService.DidNotReceive().UpdateUsername(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
         await _emailAddressService.DidNotReceive().UpdateEmailAddress(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<int>());
         await _pureserviceUserService.DidNotReceive().RegisterPhoneNumberAsDefault(Arg.Any<int>(), Arg.Any<int>());
         await _phoneNumberService.DidNotReceive().AddNewPhoneNumberAndLinkToUser(Arg.Any<string>(), Arg.Any<PhoneNumberType>(), Arg.Any<int>());
@@ -593,6 +626,13 @@ public class UserFunctionsTests
             Created = DateTime.Now.AddDays(-10),
             CreatedById = 1
         };
+        
+        var credential = new Credential
+        {
+            Username = email,
+            Created = DateTime.Now.AddDays(-5),
+            Id = 44
+        };
 
         var companies = new List<Company>
         {
@@ -660,27 +700,31 @@ public class UserFunctionsTests
             ("managerId", (null, newManagerId, null)),
             ("disabled", (null, null, false))
         ]);
+        _pureserviceUserService.NeedsUsernameUpdate(credential, entraUser).Returns((true, newEmail));
         _pureserviceUserService.NeedsCompanyUpdate(pureserviceUser, entraUser, companies).Returns(new CompanyUpdateItem("companyId", newCompanyId));
         _pureserviceUserService.NeedsDepartmentUpdate(pureserviceUser, entraUser, companies, departments).Returns(new CompanyUpdateItem("companyDepartmentId", newDepartmentId));
         _pureserviceUserService.NeedsLocationUpdate(pureserviceUser, entraUser, companies, locations).Returns(new CompanyUpdateItem("companyLocationId", newLocationId));
         _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").Returns(newMobile);
         _phoneNumberService.NeedsPhoneNumberUpdate(phoneNumberExists ? phoneNumber : null, newMobile).Returns((true, newMobile));
         _pureserviceUserService.UpdateBasicProperties(pureserviceUser.Id, Arg.Any<List<(string, (string?, int?, bool?))>>()).Returns(true);
+        _pureserviceUserService.UpdateUsername(pureserviceUser.Id, credential.Id, newEmail).Returns(true);
         _emailAddressService.UpdateEmailAddress(emailAddress.Id, entraUser.Mail, pureserviceUser.Id).Returns(true);
         _phoneNumberService.AddNewPhoneNumberAndLinkToUser(newMobile, PhoneNumberType.Mobile, pureserviceUser.Id).Returns(newPhoneNumber);
         _pureserviceUserService.RegisterPhoneNumberAsDefault(pureserviceUser.Id, newPhoneNumber.Id).Returns(true);
         _phoneNumberService.UpdatePhoneNumber(phoneNumberExists ? phoneNumber!.Id : 0, newMobile, PhoneNumberType.Mobile, pureserviceUser.Id).Returns(true);
         
-        var exception = await Record.ExceptionAsync(async () => await _service.UpdateUser(pureserviceUser, entraUser, emailAddress, phoneNumberExists ? phoneNumber : null, [],
+        var exception = await Record.ExceptionAsync(async () => await _service.UpdateUser(pureserviceUser, entraUser, credential, emailAddress, phoneNumberExists ? phoneNumber : null, [],
             pureserviceManagerUser, companies, departments, locations, synchronizationResult));
         Assert.Null(exception);
         
         Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCredentialsCount);
         Assert.Equal(0, synchronizationResult.UserDisabledCount);
         Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
         Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(1, synchronizationResult.UserHandledCount);
         Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(1, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserCompanyPropertiesUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserEmailAddressUpdatedCount);
@@ -699,6 +743,9 @@ public class UserFunctionsTests
             bui.Exists(b => b.Item1 == "title" && b.Item2.Item1 == newTitle) &&
             bui.Exists(b => b.Item1 == "managerId" && b.Item2.Item2 == newManagerId) &&
             bui.Exists(b => b.Item1 == "disabled" && b.Item2.Item3 == false)));
+        
+        await _pureserviceUserService.Received(1).UpdateUsername(Arg.Is(pureserviceUser.Id), Arg.Is(credential.Id), Arg.Is(newEmail));
+        
         // NOTE: There should be only one call to UpdateCompanyProperties where propertiesToUpdate only has 1 item (since department and location should not be updated when company is updated)
         await _pureserviceUserService.Received(1).UpdateCompanyProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<CompanyUpdateItem>>(cui =>
             cui.Count == 1 &&
@@ -830,6 +877,13 @@ public class UserFunctionsTests
             Created = DateTime.Now.AddDays(-10),
             CreatedById = 1
         };
+        
+        var credential = new Credential
+        {
+            Username = email,
+            Created = DateTime.Now.AddDays(-5),
+            Id = 44
+        };
 
         var companies = new List<Company>
         {
@@ -889,27 +943,31 @@ public class UserFunctionsTests
             ("managerId", (null, newManagerId, null)),
             ("disabled", (null, null, false))
         ]);
+        _pureserviceUserService.NeedsUsernameUpdate(credential, entraUser).Returns((true, newEmail));
         _pureserviceUserService.NeedsCompanyUpdate(pureserviceUser, entraUser, companies).ReturnsNull();
         _pureserviceUserService.NeedsDepartmentUpdate(pureserviceUser, entraUser, companies, departments).Returns(new CompanyUpdateItem("companyDepartmentId", newDepartmentId));
         _pureserviceUserService.NeedsLocationUpdate(pureserviceUser, entraUser, companies, locations).Returns(new CompanyUpdateItem("companyLocationId", newLocationId));
         _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").Returns(newMobile);
         _phoneNumberService.NeedsPhoneNumberUpdate(phoneNumberExists ? phoneNumber : null, newMobile).Returns((true, newMobile));
         _pureserviceUserService.UpdateBasicProperties(pureserviceUser.Id, Arg.Any<List<(string, (string?, int?, bool?))>>()).Returns(true);
+        _pureserviceUserService.UpdateUsername(pureserviceUser.Id, credential.Id, newEmail).Returns(true);
         _emailAddressService.UpdateEmailAddress(emailAddress.Id, entraUser.Mail, pureserviceUser.Id).Returns(true);
         _phoneNumberService.AddNewPhoneNumberAndLinkToUser(newMobile, PhoneNumberType.Mobile, pureserviceUser.Id).Returns(newPhoneNumber);
         _pureserviceUserService.RegisterPhoneNumberAsDefault(pureserviceUser.Id, newPhoneNumber.Id).Returns(true);
         _phoneNumberService.UpdatePhoneNumber(phoneNumberExists ? phoneNumber!.Id : 0, newMobile, PhoneNumberType.Mobile, pureserviceUser.Id).Returns(true);
         
-        var exception = await Record.ExceptionAsync(async () => await _service.UpdateUser(pureserviceUser, entraUser, emailAddress, phoneNumberExists ? phoneNumber : null, [],
+        var exception = await Record.ExceptionAsync(async () => await _service.UpdateUser(pureserviceUser, entraUser, credential, emailAddress, phoneNumberExists ? phoneNumber : null, [],
             pureserviceManagerUser, companies, departments, locations, synchronizationResult));
         Assert.Null(exception);
         
         Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCredentialsCount);
         Assert.Equal(0, synchronizationResult.UserDisabledCount);
         Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
         Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(1, synchronizationResult.UserHandledCount);
         Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(1, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserCompanyPropertiesUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserEmailAddressUpdatedCount);
@@ -928,6 +986,9 @@ public class UserFunctionsTests
             bui.Exists(b => b.Item1 == "title" && b.Item2.Item1 == newTitle) &&
             bui.Exists(b => b.Item1 == "managerId" && b.Item2.Item2 == newManagerId) &&
             bui.Exists(b => b.Item1 == "disabled" && b.Item2.Item3 == false)));
+        
+        await _pureserviceUserService.Received(1).UpdateUsername(Arg.Is(pureserviceUser.Id), Arg.Is(credential.Id), Arg.Is(newEmail));
+        
         // NOTE: There should be only one call to UpdateCompanyProperties where propertiesToUpdate only has 1 item (since department and location should not be updated when company is updated)
         await _pureserviceUserService.Received(1).UpdateCompanyProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<CompanyUpdateItem>>(cui =>
             cui.Count == 2 &&
@@ -1060,6 +1121,13 @@ public class UserFunctionsTests
             Created = DateTime.Now.AddDays(-10),
             CreatedById = 1
         };
+        
+        var credential = new Credential
+        {
+            Username = email,
+            Created = DateTime.Now.AddDays(-5),
+            Id = 44
+        };
 
         var companies = new List<Company>
         {
@@ -1121,6 +1189,7 @@ public class UserFunctionsTests
             ("managerId", (null, newManagerId, null)),
             ("disabled", (null, null, false))
         ]);
+        _pureserviceUserService.NeedsUsernameUpdate(credential, entraUser).Returns((true, newEmail));
         _pureserviceUserService.NeedsCompanyUpdate(pureserviceUser, entraUser, companies).ReturnsNull();
         _pureserviceUserService.NeedsDepartmentUpdate(pureserviceUser, entraUser, companies, departments).Returns(new CompanyUpdateItem("companyDepartmentId", null, newDepartmentName));
         _pureserviceUserService.NeedsLocationUpdate(pureserviceUser, entraUser, companies, locations).Returns(new CompanyUpdateItem("companyLocationId", null, newLocationName));
@@ -1130,21 +1199,24 @@ public class UserFunctionsTests
         _companyService.AddDepartment(newDepartmentName, companyId).Returns(newDepartment);
         _companyService.AddLocation(newLocationName, companyId).Returns(newLocation);
         _pureserviceUserService.UpdateBasicProperties(pureserviceUser.Id, Arg.Any<List<(string, (string?, int?, bool?))>>()).Returns(true);
+        _pureserviceUserService.UpdateUsername(pureserviceUser.Id, credential.Id, newEmail).Returns(true);
         _emailAddressService.UpdateEmailAddress(emailAddress.Id, entraUser.Mail, pureserviceUser.Id).Returns(true);
         _phoneNumberService.AddNewPhoneNumberAndLinkToUser(newMobile, PhoneNumberType.Mobile, pureserviceUser.Id).Returns(newPhoneNumber);
         _pureserviceUserService.RegisterPhoneNumberAsDefault(pureserviceUser.Id, newPhoneNumber.Id).Returns(true);
         _phoneNumberService.UpdatePhoneNumber(phoneNumberExists ? phoneNumber!.Id : 0, newMobile, PhoneNumberType.Mobile, pureserviceUser.Id).Returns(true);
         
-        var exception = await Record.ExceptionAsync(async () => await _service.UpdateUser(pureserviceUser, entraUser, emailAddress, phoneNumberExists ? phoneNumber : null, [],
+        var exception = await Record.ExceptionAsync(async () => await _service.UpdateUser(pureserviceUser, entraUser, credential, emailAddress, phoneNumberExists ? phoneNumber : null, [],
             pureserviceManagerUser, companies, departments, locations, synchronizationResult));
         Assert.Null(exception);
         
         Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCredentialsCount);
         Assert.Equal(0, synchronizationResult.UserDisabledCount);
         Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
         Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(1, synchronizationResult.UserHandledCount);
         Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(1, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserCompanyPropertiesUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserEmailAddressUpdatedCount);
@@ -1163,6 +1235,8 @@ public class UserFunctionsTests
             bui.Exists(b => b.Item1 == "title" && b.Item2.Item1 == newTitle) &&
             bui.Exists(b => b.Item1 == "managerId" && b.Item2.Item2 == newManagerId) &&
             bui.Exists(b => b.Item1 == "disabled" && b.Item2.Item3 == false)));
+        
+        await _pureserviceUserService.Received(1).UpdateUsername(Arg.Is(pureserviceUser.Id), Arg.Is(credential.Id), Arg.Is(newEmail));
         
         await _companyService.Received(1).AddDepartment(Arg.Is(newDepartmentName), Arg.Is(companyId));
         await _companyService.Received(1).AddLocation(Arg.Is(newLocationName), Arg.Is(companyId));
@@ -1295,6 +1369,13 @@ public class UserFunctionsTests
             Created = DateTime.Now.AddDays(-10),
             CreatedById = 1
         };
+        
+        var credential = new Credential
+        {
+            Username = email,
+            Created = DateTime.Now.AddDays(-5),
+            Id = 44
+        };
 
         var companies = new List<Company>
         {
@@ -1349,6 +1430,7 @@ public class UserFunctionsTests
             ("managerId", (null, newManagerId, null)),
             ("disabled", (null, null, false))
         ]);
+        _pureserviceUserService.NeedsUsernameUpdate(credential, entraUser).Returns((true, newEmail));
         _pureserviceUserService.NeedsCompanyUpdate(pureserviceUser, entraUser, companies).Returns(new CompanyUpdateItem("companyId", null, newCompanyName));
         _pureserviceUserService.NeedsDepartmentUpdate(pureserviceUser, entraUser, companies, departments).ReturnsNull();
         _pureserviceUserService.NeedsLocationUpdate(pureserviceUser, entraUser, companies, locations).ReturnsNull();
@@ -1357,21 +1439,24 @@ public class UserFunctionsTests
 
         _companyService.AddCompany(newCompanyName).Returns(newCompany);
         _pureserviceUserService.UpdateBasicProperties(pureserviceUser.Id, Arg.Any<List<(string, (string?, int?, bool?))>>()).Returns(true);
+        _pureserviceUserService.UpdateUsername(pureserviceUser.Id, credential.Id, newEmail).Returns(true);
         _emailAddressService.UpdateEmailAddress(emailAddress.Id, entraUser.Mail, pureserviceUser.Id).Returns(true);
         _phoneNumberService.AddNewPhoneNumberAndLinkToUser(newMobile, PhoneNumberType.Mobile, pureserviceUser.Id).Returns(newPhoneNumber);
         _pureserviceUserService.RegisterPhoneNumberAsDefault(pureserviceUser.Id, newPhoneNumber.Id).Returns(true);
         _phoneNumberService.UpdatePhoneNumber(phoneNumberExists ? phoneNumber!.Id : 0, newMobile, PhoneNumberType.Mobile, pureserviceUser.Id).Returns(true);
         
-        var exception = await Record.ExceptionAsync(async () => await _service.UpdateUser(pureserviceUser, entraUser, emailAddress, phoneNumberExists ? phoneNumber : null, [],
+        var exception = await Record.ExceptionAsync(async () => await _service.UpdateUser(pureserviceUser, entraUser, credential, emailAddress, phoneNumberExists ? phoneNumber : null, [],
             pureserviceManagerUser, companies, departments, locations, synchronizationResult));
         Assert.Null(exception);
         
         Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCredentialsCount);
         Assert.Equal(0, synchronizationResult.UserDisabledCount);
         Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
         Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(1, synchronizationResult.UserHandledCount);
         Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(1, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserCompanyPropertiesUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserEmailAddressUpdatedCount);
@@ -1475,6 +1560,13 @@ public class UserFunctionsTests
             Created = DateTime.Now.AddDays(-10),
             CreatedById = 1
         };
+        
+        var credential = new Credential
+        {
+            Username = email,
+            Created = DateTime.Now.AddDays(-5),
+            Id = 44
+        };
 
         var companies = new List<Company>
         {
@@ -1514,22 +1606,25 @@ public class UserFunctionsTests
 
         _pureserviceCaller.NeedsToWait(5).Returns((false, 0, null));
         _pureserviceUserService.NeedsBasicUpdate(pureserviceUser, entraUser).Returns([]);
+        _pureserviceUserService.NeedsUsernameUpdate(credential, entraUser).Returns((false, null));
         _pureserviceUserService.NeedsCompanyUpdate(pureserviceUser, entraUser, companies).ReturnsNull();
         _pureserviceUserService.NeedsDepartmentUpdate(pureserviceUser, entraUser, companies, departments).ReturnsNull();
         _pureserviceUserService.NeedsLocationUpdate(pureserviceUser, entraUser, companies, locations).ReturnsNull();
         _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").ReturnsNull();
         _phoneNumberService.NeedsPhoneNumberUpdate(null, null).Returns((false, null));
         
-        var exception = await Record.ExceptionAsync(async () => await _service.UpdateUser(pureserviceUser, entraUser, emailAddress, null, [], null, companies,
+        var exception = await Record.ExceptionAsync(async () => await _service.UpdateUser(pureserviceUser, entraUser, credential, emailAddress, null, [], null, companies,
             departments, locations, synchronizationResult));
         Assert.Null(exception);
         
         Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCredentialsCount);
         Assert.Equal(0, synchronizationResult.UserDisabledCount);
         Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
         Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(1, synchronizationResult.UserHandledCount);
         Assert.Equal(1, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
@@ -1543,6 +1638,7 @@ public class UserFunctionsTests
         
         await _pureserviceUserService.DidNotReceive().UpdateCompanyProperties(Arg.Any<int>(), Arg.Any<List<CompanyUpdateItem>>());
         await _pureserviceUserService.DidNotReceive().UpdateBasicProperties(Arg.Any<int>(), Arg.Any<List<(string, (string?, int?, bool?))>>());
+        await _pureserviceUserService.DidNotReceive().UpdateUsername(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
         await _emailAddressService.DidNotReceive().UpdateEmailAddress(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<int>());
         await _pureserviceUserService.DidNotReceive().RegisterPhoneNumberAsDefault(Arg.Any<int>(), Arg.Any<int>());
         await _phoneNumberService.DidNotReceive().AddNewPhoneNumberAndLinkToUser(Arg.Any<string>(), Arg.Any<PhoneNumberType>(), Arg.Any<int>());
@@ -1610,11 +1706,13 @@ public class UserFunctionsTests
         Assert.Null(exception);
         
         Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCredentialsCount);
         Assert.Equal(0, synchronizationResult.UserDisabledCount);
         Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
         Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(0, synchronizationResult.UserHandledCount);
         Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
@@ -1683,11 +1781,13 @@ public class UserFunctionsTests
         Assert.Null(exception);
         
         Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCredentialsCount);
         Assert.Equal(0, synchronizationResult.UserDisabledCount);
         Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
         Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(1, synchronizationResult.UserHandledCount);
         Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
@@ -1763,11 +1863,13 @@ public class UserFunctionsTests
         Assert.Null(exception);
         
         Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCredentialsCount);
         Assert.Equal(0, synchronizationResult.UserDisabledCount);
         Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
         Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(1, synchronizationResult.UserHandledCount);
         Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
@@ -1843,11 +1945,13 @@ public class UserFunctionsTests
         Assert.Null(exception);
         
         Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCredentialsCount);
         Assert.Equal(0, synchronizationResult.UserDisabledCount);
         Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
         Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(1, synchronizationResult.UserHandledCount);
         Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
@@ -1931,11 +2035,13 @@ public class UserFunctionsTests
         Assert.Null(exception);
         
         Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCredentialsCount);
         Assert.Equal(0, synchronizationResult.UserDisabledCount);
         Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
         Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(1, synchronizationResult.UserHandledCount);
         Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
@@ -2045,11 +2151,13 @@ public class UserFunctionsTests
         Assert.Null(exception);
         
         Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCredentialsCount);
         Assert.Equal(0, synchronizationResult.UserDisabledCount);
         Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
         Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
         Assert.Equal(1, synchronizationResult.UserHandledCount);
         Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);

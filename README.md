@@ -4,40 +4,40 @@ Synchronization service to add / update / disable / enable user objects in Pures
 
 ## Properties handled on employees from `Entra ID`
 
-| Property in Pureservice | Property in Source | Description                                 | Category     | Type   | Default Value |
-|------------------------|--------------------|----------------------------------------------|--------------|--------|---------------|
-| firstName              | givenName          | First name                                   | basic        | string | null          |
-| lastName               | surname            | Last name                                    | basic        | string | null          |
-| title                  | jobTitle           | Job title                                    | basic        | string | null          |
-| managerId              | manager.id         | Manager ID for Pureservice user              | basic        | int    | null          |
-| companyId              | companyName        | Company name                                 | company      | int    | null          |
-| companyDepartmentId    | department         | Company department                           | company      | int    | null          |
-| companyLocationId      | officeLocation     | Company location                             | company      | int    | null          |
-| emailAddressId         | mail               | Email address                                | emailaddress | int    | null          |
-| phoneNumberId          | csa.mobile         | Mobile phone number                          | phonenumber  | int    | null          |
-| disabled               | accountEnabled     | Disabled                                     | basic        | int    | false         |
-| languageId             | preferredLanguage  | Language (set to Norwegian for now)          | basic        | int    | Norwegian     |
-| role                   |                    | Role (UserRole) (only set on creation)       | basic        | int    | Sluttbruker   |
-| importUniqueKey        | id                 | Unique key for import (only set on creation) | basic        | int    | null          |
-| username               | userPrincipalName  | Username (only set on creation)              | basic        | int    | null          |
+| Property in Pureservice | Property in Source | Description                                                      | Category     | Type   | Default Value |
+|------------------------|--------------------|-------------------------------------------------------------------|--------------|--------|---------------|
+| firstName              | givenName          | First name                                                        | basic        | string | null          |
+| lastName               | surname            | Last name                                                         | basic        | string | null          |
+| title                  | jobTitle           | Job title                                                         | basic        | string | null          |
+| managerId              | manager.id         | Manager ID for Pureservice user                                   | basic        | int    | null          |
+| companyId              | companyName        | Company name                                                      | company      | int    | null          |
+| companyDepartmentId    | department         | Company department                                                | company      | int    | null          |
+| companyLocationId      | officeLocation     | Company location                                                  | company      | int    | null          |
+| emailAddressId         | mail               | Email address                                                     | emailaddress | int    | null          |
+| phoneNumberId          | csa.mobile         | Mobile phone number                                               | phonenumber  | int    | null          |
+| disabled               | accountEnabled     | Disabled                                                          | basic        | int    | false         |
+| languageId             | preferredLanguage  | Language (set to Norwegian for now)                               | basic        | int    | Norwegian     |
+| role                   |                    | Role (UserRole) (only set on creation)                            | basic        | int    | Sluttbruker   |
+| importUniqueKey        | id                 | Unique key for import (only set on creation)                      | basic        | int    | null          |
+| username               | userPrincipalName  | Username (update does not work for users with role Administrator) | basic        | int    | null          |
 
 ## Properties handled on students from `Entra ID`
 
-| Property in Pureservice | Property in Source | Description                                 | Category     | Type   | Default Value |
-|------------------------|--------------------|----------------------------------------------|--------------|--------|---------------|
-| firstName              | givenName          | First name                                   | basic        | string | null          |
-| lastName               | surname            | Last name                                    | basic        | string | null          |
-| title                  | jobTitle           | Job title                                    | basic        | string | null          |
-| companyId              | companyName        | Company name                                 | company      | int    | null          |
-| companyDepartmentId    | department         | Company department                           | company      | int    | null          |
-| companyLocationId      | officeLocation     | Company location                             | company      | int    | null          |
-| emailAddressId         | mail               | Email address                                | emailaddress | int    | null          |
-| phoneNumberId          | csa.mobile         | Mobile phone number                          | phonenumber  | int    | null          |
-| disabled               | accountEnabled     | Disabled                                     | basic        | int    | false         |
-| languageId             | preferredLanguage  | Language (set to Norwegian for now)          | basic        | int    | Norwegian     |
-| role                   |                    | Role (UserRole) (only set on creation)       | basic        | int    | Sluttbruker   |
-| importUniqueKey        | id                 | Unique key for import (only set on creation) | basic        | int    | null          |
-| username               | userPrincipalName  | Username (only set on creation)              | basic        | int    | null          |
+| Property in Pureservice | Property in Source | Description                                                      | Category     | Type   | Default Value |
+|------------------------|--------------------|-------------------------------------------------------------------|--------------|--------|---------------|
+| firstName              | givenName          | First name                                                        | basic        | string | null          |
+| lastName               | surname            | Last name                                                         | basic        | string | null          |
+| title                  | jobTitle           | Job title                                                         | basic        | string | null          |
+| companyId              | companyName        | Company name                                                      | company      | int    | null          |
+| companyDepartmentId    | department         | Company department                                                | company      | int    | null          |
+| companyLocationId      | officeLocation     | Company location                                                  | company      | int    | null          |
+| emailAddressId         | mail               | Email address                                                     | emailaddress | int    | null          |
+| phoneNumberId          | csa.mobile         | Mobile phone number                                               | phonenumber  | int    | null          |
+| disabled               | accountEnabled     | Disabled                                                          | basic        | int    | false         |
+| languageId             | preferredLanguage  | Language (set to Norwegian for now)                               | basic        | int    | Norwegian     |
+| role                   |                    | Role (UserRole) (only set on creation)                            | basic        | int    | Sluttbruker   |
+| importUniqueKey        | id                 | Unique key for import (only set on creation)                      | basic        | int    | null          |
+| username               | userPrincipalName  | Username (update does not work for users with role Administrator) | basic        | int    | null          |
 
 ## Setup
 

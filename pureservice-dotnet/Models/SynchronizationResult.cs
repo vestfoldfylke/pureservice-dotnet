@@ -6,9 +6,11 @@ public class SynchronizationResult
     public int UserHandledCount { get; set; }
     public int UserDisabledCount { get; set; }
     public int UserMissingCompanyNameCount { get; set; }
+    public int UserMissingCredentialsCount { get; set; }
     public int UserMissingEmailAddressCount { get; set; }
     public int UserErrorCount { get; set; }
     public int UserBasicPropertiesUpdatedCount { get; set; }
+    public int UserUsernameUpdatedCount { get; set; }
     public int UserCompanyPropertiesUpdatedCount { get; set; }
     public int UserEmailAddressUpdatedCount { get; set; }
     public int UserPhoneNumberUpdatedCount { get; set; }
