@@ -4,7 +4,7 @@ Synchronization service to add / update / disable / enable user objects in Pures
 
 ## Properties handled on employees from `Entra ID`
 
-| Property in Pureservice | Property in Source | Description                                                       | Category     | Type   | Default Value |
+| Property in Pureservice | Property in Source | Description                                                      | Category     | Type   | Default Value |
 |------------------------|--------------------|-------------------------------------------------------------------|--------------|--------|---------------|
 | firstName              | givenName          | First name                                                        | basic        | string | null          |
 | lastName               | surname            | Last name                                                         | basic        | string | null          |
@@ -23,7 +23,7 @@ Synchronization service to add / update / disable / enable user objects in Pures
 
 ## Properties handled on students from `Entra ID`
 
-| Property in Pureservice | Property in Source | Description                                                       | Category     | Type   | Default Value |
+| Property in Pureservice | Property in Source | Description                                                      | Category     | Type   | Default Value |
 |------------------------|--------------------|-------------------------------------------------------------------|--------------|--------|---------------|
 | firstName              | givenName          | First name                                                        | basic        | string | null          |
 | lastName               | surname            | Last name                                                         | basic        | string | null          |
