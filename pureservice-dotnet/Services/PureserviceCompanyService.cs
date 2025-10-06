@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Web;
@@ -161,8 +162,7 @@ public class PureserviceCompanyService : IPureserviceCompanyService
             result = await _pureserviceCaller.GetAsync<CompanyList>($"{CompanyBasePath}?{queryString}");
             if (result is null)
             {
-                _logger.LogError("No result returned from API from start {Start} with limit {Limit}", currentStart, limit);
-                return companyList;
+                throw new InvalidOperationException($"No result returned from Pureservice API from start {currentStart} with limit {limit}");
             }
             
             _logger.LogDebug("Fetched {Count} Pureservice companies starting from {Start} with limit {Limit}", result.Companies.Count, currentStart, limit);
@@ -202,8 +202,7 @@ public class PureserviceCompanyService : IPureserviceCompanyService
             result = await _pureserviceCaller.GetAsync<CompanyDepartmentList>($"{DepartmentBasePath}?{queryString}");
             if (result is null)
             {
-                _logger.LogError("No result returned from API from start {Start} with limit {Limit}", currentStart, limit);
-                return departmentList;
+                throw new InvalidOperationException($"No result returned from Pureservice API from start {currentStart} with limit {limit}");
             }
             
             _logger.LogDebug("Fetched {Count} Pureservice departments starting from {Start} with limit {Limit}", result.Companydepartments.Count, currentStart, limit);
@@ -243,8 +242,7 @@ public class PureserviceCompanyService : IPureserviceCompanyService
             result = await _pureserviceCaller.GetAsync<CompanyLocationList>($"{LocationBasePath}?{queryString}");
             if (result is null)
             {
-                _logger.LogError("No result returned from API from start {Start} with limit {Limit}", currentStart, limit);
-                return locationList;
+                throw new InvalidOperationException($"No result returned from Pureservice API from start {currentStart} with limit {limit}");
             }
             
             _logger.LogDebug("Fetched {Count} Pureservice locations starting from {Start} with limit {Limit}", result.Companylocations.Count, currentStart, limit);

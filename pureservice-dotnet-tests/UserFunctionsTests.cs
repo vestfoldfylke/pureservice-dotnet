@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
+using NSubstitute.ExceptionExtensions;
 using NSubstitute.ReturnsExtensions;
 using pureservice_dotnet.Functions;
 using pureservice_dotnet.Models;
@@ -35,6 +37,99 @@ public class UserFunctionsTests
 
         _service = new UserFunctions(_graphService, Substitute.For<ILogger<UserFunctions>>(), Substitute.For<IMetricsService>(), _pureserviceCaller, _companyService,
             _emailAddressService, _phoneNumberService, _physicalAddressService, _pureserviceUserService);
+    }
+    
+    // Synchronize
+    [Fact]
+    public async Task Synchronize_Should_Throw_When_Getting_Users_From_Pureservice_Fails()
+    {
+        _graphService.GetEmployees().Returns([]);
+        _graphService.GetStudents().Returns([]);
+        
+        _pureserviceUserService.GetUsers(Arg.Any<string[]>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<bool>())
+            .ThrowsAsync(new InvalidOperationException("No result returned from Pureservice API from start {currentStart} with limit {limit}"));
+
+        var exception = await Record.ExceptionAsync(async () => await _service.Synchronize(new TimerInfo()));
+        Assert.NotNull(exception);
+        Assert.IsType<InvalidOperationException>(exception);
+        Assert.Equal("No result returned from Pureservice API from start {currentStart} with limit {limit}", exception.Message);
+
+        await _graphService.Received(1).GetEmployees();
+        await _graphService.Received(1).GetStudents();
+        await _pureserviceUserService.Received(1).GetUsers(Arg.Any<string[]>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<bool>());
+
+        await _companyService.DidNotReceive().GetCompanies();
+        await _companyService.DidNotReceive().GetDepartments();
+        await _companyService.DidNotReceive().GetLocations();
+        await _companyService.DidNotReceive().AddCompany(Arg.Any<string>());
+        _pureserviceCaller.DidNotReceive().NeedsToWait(Arg.Any<int>());
+        await _physicalAddressService.DidNotReceive().AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+        _graphService.DidNotReceive().GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<string>(), Arg.Any<string>());
+        await _phoneNumberService.DidNotReceive().AddNewPhoneNumber(Arg.Any<string>(), Arg.Any<PhoneNumberType>());
+        await _emailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());
+        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+        
+        _pureserviceUserService.DidNotReceive().NeedsBasicUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<User>());
+        _pureserviceUserService.DidNotReceive().NeedsCompanyUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>());
+        _pureserviceUserService.DidNotReceive().NeedsDepartmentUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>(), Arg.Any<List<CompanyDepartment>>());
+        _pureserviceUserService.DidNotReceive().NeedsLocationUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>(), Arg.Any<List<CompanyLocation>>());
+        _phoneNumberService.DidNotReceive().NeedsPhoneNumberUpdate(Arg.Any<PhoneNumber>(), Arg.Any<string>());
+        await _pureserviceUserService.DidNotReceive().UpdateBasicProperties(Arg.Any<int>(), Arg.Any<List<(string, (string?, int?, bool?))>>());
+        await _companyService.DidNotReceive().AddDepartment(Arg.Any<string>(), Arg.Any<int>());
+        await _companyService.DidNotReceive().AddLocation(Arg.Any<string>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().UpdateCompanyProperties(Arg.Any<int>(), Arg.Any<List<CompanyUpdateItem>>());
+        await _emailAddressService.DidNotReceive().UpdateEmailAddress(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().RegisterPhoneNumberAsDefault(Arg.Any<int>(), Arg.Any<int>());
+        await _phoneNumberService.DidNotReceive().AddNewPhoneNumberAndLinkToUser(Arg.Any<string>(), Arg.Any<PhoneNumberType>(), Arg.Any<int>());
+        await _phoneNumberService.DidNotReceive().UpdatePhoneNumber(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<PhoneNumberType>(), Arg.Any<int>());
+    }
+    
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Synchronize_Should_Throw_When_Getting_Users_From_Pureservice_Is_Missing_Required_Links(bool hasLinkedObject)
+    {
+        _graphService.GetEmployees().Returns([]);
+        _graphService.GetStudents().Returns([]);
+
+        _pureserviceUserService.GetUsers(Arg.Any<string[]>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<bool>())
+            .Returns(new UserList([], hasLinkedObject ? new Linked() : null));
+
+        var exception = await Record.ExceptionAsync(async () => await _service.Synchronize(new TimerInfo()));
+        Assert.NotNull(exception);
+        Assert.IsType<InvalidOperationException>(exception);
+        Assert.Equal("Expected linked results were not found in user list", exception.Message);
+
+        await _graphService.Received(1).GetEmployees();
+        await _graphService.Received(1).GetStudents();
+        await _pureserviceUserService.Received(1).GetUsers(Arg.Any<string[]>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<bool>());
+
+        await _companyService.DidNotReceive().GetCompanies();
+        await _companyService.DidNotReceive().GetDepartments();
+        await _companyService.DidNotReceive().GetLocations();
+        await _companyService.DidNotReceive().AddCompany(Arg.Any<string>());
+        _pureserviceCaller.DidNotReceive().NeedsToWait(Arg.Any<int>());
+        await _physicalAddressService.DidNotReceive().AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+        _graphService.DidNotReceive().GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<string>(), Arg.Any<string>());
+        await _phoneNumberService.DidNotReceive().AddNewPhoneNumber(Arg.Any<string>(), Arg.Any<PhoneNumberType>());
+        await _emailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());
+        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+        
+        _pureserviceUserService.DidNotReceive().NeedsBasicUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<User>());
+        _pureserviceUserService.DidNotReceive().NeedsCompanyUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>());
+        _pureserviceUserService.DidNotReceive().NeedsDepartmentUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>(), Arg.Any<List<CompanyDepartment>>());
+        _pureserviceUserService.DidNotReceive().NeedsLocationUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>(), Arg.Any<List<CompanyLocation>>());
+        _phoneNumberService.DidNotReceive().NeedsPhoneNumberUpdate(Arg.Any<PhoneNumber>(), Arg.Any<string>());
+        await _pureserviceUserService.DidNotReceive().UpdateBasicProperties(Arg.Any<int>(), Arg.Any<List<(string, (string?, int?, bool?))>>());
+        await _companyService.DidNotReceive().AddDepartment(Arg.Any<string>(), Arg.Any<int>());
+        await _companyService.DidNotReceive().AddLocation(Arg.Any<string>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().UpdateCompanyProperties(Arg.Any<int>(), Arg.Any<List<CompanyUpdateItem>>());
+        await _emailAddressService.DidNotReceive().UpdateEmailAddress(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().RegisterPhoneNumberAsDefault(Arg.Any<int>(), Arg.Any<int>());
+        await _phoneNumberService.DidNotReceive().AddNewPhoneNumberAndLinkToUser(Arg.Any<string>(), Arg.Any<PhoneNumberType>(), Arg.Any<int>());
+        await _phoneNumberService.DidNotReceive().UpdatePhoneNumber(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<PhoneNumberType>(), Arg.Any<int>());
     }
 
     // UpdateUser

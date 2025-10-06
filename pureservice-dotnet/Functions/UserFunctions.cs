@@ -59,7 +59,7 @@ public class UserFunctions
         if (pureserviceUsers.Linked?.EmailAddresses is null || pureserviceUsers.Linked?.PhoneNumbers is null)
         {
             _logger.LogError("Expected linked results were not found in user list");
-            return;
+            throw new InvalidOperationException("Expected linked results were not found in user list");
         }
 
         var companies = await _pureserviceCompanyService.GetCompanies();
