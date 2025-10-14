@@ -35,8 +35,8 @@ public class UserFunctionsTests
         _physicalAddressService = Substitute.For<IPureservicePhysicalAddressService>();
         _pureserviceUserService = Substitute.For<IPureserviceUserService>();
 
-        _service = new UserFunctions(_graphService, Substitute.For<ILogger<UserFunctions>>(), Substitute.For<IMetricsService>(), _pureserviceCaller, _companyService,
-            _emailAddressService, _phoneNumberService, _physicalAddressService, _pureserviceUserService);
+        _service = new UserFunctions(_graphService, Substitute.For<ILogger<UserFunctions>>(), _pureserviceCaller, _companyService, _emailAddressService, _phoneNumberService,
+            _physicalAddressService, _pureserviceUserService);
     }
     
     // Synchronize
