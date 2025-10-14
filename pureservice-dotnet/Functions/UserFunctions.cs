@@ -77,7 +77,7 @@ public class UserFunctions
             {
                 if (HasExceededRunLimit(startTime))
                 {
-                    _logger.LogInformation("Function has been running for more than {MaxRunTimeLimit} minutes, stopping further processing to avoid collisions and next runs", MaxRunTimeInMinutes);
+                    _logger.LogWarning("Function has been running for more than {MaxRunTimeLimit} minutes, stopping further processing to avoid collisions and next runs", MaxRunTimeInMinutes);
                     _logger.LogInformation("UserFunctions_Synchronize finished: {@SynchronizationResult}", synchronizationResult);
                     return;
                 }
