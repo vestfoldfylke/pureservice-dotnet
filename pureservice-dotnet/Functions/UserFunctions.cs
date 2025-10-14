@@ -8,7 +8,6 @@ using pureservice_dotnet.Models;
 using pureservice_dotnet.Models.Enums;
 using pureservice_dotnet.Services;
 using Serilog.Context;
-using Vestfold.Extensions.Metrics.Services;
 
 namespace pureservice_dotnet.Functions;
 
@@ -16,7 +15,6 @@ public class UserFunctions
 {
     private readonly IGraphService _graphService;
     private readonly ILogger<UserFunctions> _logger;
-    private readonly IMetricsService _metricsService;
     private readonly IPureserviceCaller _pureserviceCaller;
     private readonly IPureserviceCompanyService _pureserviceCompanyService;
     private readonly IPureserviceEmailAddressService _pureserviceEmailAddressService;
@@ -24,13 +22,14 @@ public class UserFunctions
     private readonly IPureservicePhysicalAddressService _pureservicePhysicalAddressService;
     private readonly IPureserviceUserService _pureserviceUserService;
 
-    public UserFunctions(IGraphService graphService, ILogger<UserFunctions> logger, IMetricsService metricsService, IPureserviceCaller pureserviceCaller,
-        IPureserviceCompanyService pureserviceCompanyService, IPureserviceEmailAddressService pureserviceEmailAddressService, IPureservicePhoneNumberService pureservicePhoneNumberService,
+    private const int MaxRunTimeInMinutes = 20;
+
+    public UserFunctions(IGraphService graphService, ILogger<UserFunctions> logger, IPureserviceCaller pureserviceCaller, IPureserviceCompanyService pureserviceCompanyService,
+        IPureserviceEmailAddressService pureserviceEmailAddressService, IPureservicePhoneNumberService pureservicePhoneNumberService,
         IPureservicePhysicalAddressService pureservicePhysicalAddressService, IPureserviceUserService pureserviceUserService)
     {
         _graphService = graphService;
         _logger = logger;
-        _metricsService = metricsService;
         _pureserviceCaller = pureserviceCaller;
         _pureserviceCompanyService = pureserviceCompanyService;
         _pureserviceEmailAddressService = pureserviceEmailAddressService;
@@ -42,8 +41,9 @@ public class UserFunctions
     [Function("Synchronize")]
     public async Task Synchronize([TimerTrigger("%SynchronizeSchedule%")] TimerInfo timerInfo)
     {
-        _logger.LogInformation("Starting UserFunctions_Synchronize");
-        using var _ = _metricsService.Histogram($"{Constants.MetricsPrefix}_UserFunctions_Synchronize", "Duration of UserFunctions_Synchronize in seconds");
+        _logger.LogInformation("Starting UserFunctions_Synchronize with a MaxRunTimeLimit of {MaxRunTimeLimit} minutes", MaxRunTimeInMinutes);
+        
+        var startTime = DateTime.UtcNow;
 
         var entraEmployees = await _graphService.GetEmployees();
         var entraStudents = await _graphService.GetStudents();
@@ -75,6 +75,13 @@ public class UserFunctions
         {
             using (LogContext.PushProperty("EntraId", entraUser.Id))
             {
+                if (HasExceededRunLimit(startTime))
+                {
+                    _logger.LogInformation("Function has been running for more than {MaxRunTimeLimit} minutes, stopping further processing to avoid collisions and next runs", MaxRunTimeInMinutes);
+                    _logger.LogInformation("UserFunctions_Synchronize finished: {@SynchronizationResult}", synchronizationResult);
+                    return;
+                }
+                
                 _logger.LogInformation("Processing Entra user {DisplayName} with EntraId {EntraId}", entraUser.DisplayName, entraUser.Id);
 
                 var (pureserviceUser, pureserviceManagerUser, skipUser) = GetPureserviceUserInfo(entraUser, pureserviceUsers, synchronizationResult);
@@ -523,4 +530,7 @@ public class UserFunctions
             ? (new CompanyUpdateItem(updateItem.PropertyName, location.Id), location)
             : (null, null);
     }
+    
+    private static bool HasExceededRunLimit(DateTime startTime) =>
+        DateTime.UtcNow - startTime > TimeSpan.FromMinutes(MaxRunTimeInMinutes);
 }
