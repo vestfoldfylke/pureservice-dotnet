@@ -420,7 +420,7 @@ public class UserFunctions
     {
         if (entraUser.Mail is null && entraUser.AccountEnabled.HasValue && entraUser.AccountEnabled.Value)
         {
-            _logger.LogError("Entra user with Id {EntraId} has no email address. Skipping", entraUser.Id);
+            _logger.LogWarning("Entra user with Id {EntraId} has no email address. Skipping", entraUser.Id);
             synchronizationResult.UserMissingEmailAddressCount++;
             return (null, null, true);
         }
@@ -460,7 +460,7 @@ public class UserFunctions
 
         if (pureserviceUser.Links.EmailAddress is null)
         {
-            _logger.LogError("UserId {UserId} has no email address. Skipping", pureserviceUser.Id);
+            _logger.LogWarning("UserId {UserId} has no email address. Skipping", pureserviceUser.Id);
             synchronizationResult.UserMissingEmailAddressCount++;
             return (null, null, null, []);
         }
