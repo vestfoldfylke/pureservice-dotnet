@@ -120,6 +120,15 @@ public class PureserviceCaller : IPureserviceCaller
                 endpoint, typeof(T).Name, statusCode, responseContent);
             return null;
         }
+        catch (NullReferenceException ex)
+        {
+            isSuccess = false;
+            
+            _logger.LogError(ex,
+                "NullReferenceException when calling Pureservice GET: {Endpoint} with return type {Type}. StatusCode: {StatusCode}. Content: {Content}",
+                endpoint, typeof(T).Name, statusCode, responseContent);
+            return null;
+        }
         finally
         {
             _metricsService.Count($"{Constants.MetricsPrefix}_{MetricsServicePrefix}_GetRequest", "Number of GET requests to Pureservice",
@@ -194,6 +203,15 @@ public class PureserviceCaller : IPureserviceCaller
                 endpoint, typeof(T).Name, statusCode, responseContent);
             return null;
         }
+        catch (NullReferenceException ex)
+        {
+            isSuccess = false;
+            
+            _logger.LogError(ex,
+                "NullReferenceException when calling Pureservice PATCH: {Endpoint} with return type {Type}. StatusCode: {StatusCode}. Content: {Content}",
+                endpoint, typeof(T).Name, statusCode, responseContent);
+            return null;
+        }
         finally
         {
             _metricsService.Count($"{Constants.MetricsPrefix}_{MetricsServicePrefix}_PatchRequest", "Number of PATCH requests to Pureservice",
@@ -251,6 +269,15 @@ public class PureserviceCaller : IPureserviceCaller
         {
             _logger.LogError(ex,
                 "InvalidOperationException when calling Pureservice PATCH: {Endpoint}. StatusCode: {StatusCode}. Content: {Content}",
+                endpoint, statusCode, responseContent);
+            return false;
+        }
+        catch (NullReferenceException ex)
+        {
+            isSuccess = false;
+            
+            _logger.LogError(ex,
+                "NullReferenceException when calling Pureservice PATCH: {Endpoint}. StatusCode: {StatusCode}. Content: {Content}",
                 endpoint, statusCode, responseContent);
             return false;
         }
@@ -317,6 +344,15 @@ public class PureserviceCaller : IPureserviceCaller
                 endpoint, typeof(T).Name, statusCode, responseContent);
             return null;
         }
+        catch (NullReferenceException ex)
+        {
+            isSuccess = false;
+            
+            _logger.LogError(ex,
+                "NullReferenceException when calling Pureservice POST: {Endpoint} with return type {Type}. StatusCode: {StatusCode}. Content: {Content}",
+                endpoint, typeof(T).Name, statusCode, responseContent);
+            return null;
+        }
         finally
         {
             _metricsService.Count($"{Constants.MetricsPrefix}_{MetricsServicePrefix}_PostRequest", "Number of POST requests to Pureservice",
@@ -380,6 +416,15 @@ public class PureserviceCaller : IPureserviceCaller
                 endpoint, typeof(T).Name, statusCode, responseContent);
             return null;
         }
+        catch (NullReferenceException ex)
+        {
+            isSuccess = false;
+            
+            _logger.LogError(ex,
+                "NullReferenceException when calling Pureservice PUT: {Endpoint} with return type {Type}. StatusCode: {StatusCode}. Content: {Content}",
+                endpoint, typeof(T).Name, statusCode, responseContent);
+            return null;
+        }
         finally
         {
             _metricsService.Count($"{Constants.MetricsPrefix}_{MetricsServicePrefix}_PutRequest", "Number of PUT requests to Pureservice",
@@ -437,6 +482,15 @@ public class PureserviceCaller : IPureserviceCaller
         {
             _logger.LogError(ex,
                 "InvalidOperationException when calling Pureservice PUT: {Endpoint} without return type. StatusCode: {StatusCode}. Content: {Content}",
+                endpoint, statusCode, responseContent);
+            return false;
+        }
+        catch (NullReferenceException ex)
+        {
+            isSuccess = false;
+            
+            _logger.LogError(ex,
+                "NullReferenceException when calling Pureservice PUT: {Endpoint} without return type. StatusCode: {StatusCode}. Content: {Content}",
                 endpoint, statusCode, responseContent);
             return false;
         }
