@@ -70,7 +70,7 @@ Create a `local.settings.json` file in the `pureservice-dotnet` folder with the 
     "Employee_Auto_Users_OU": "OU=path,OU=to,OU=auto-users-ou,DC=domain,DC=something,DC=edu",
     "Employee_Auto_Disabled_Users_OU": "OU=path,OU=to,OU=auto-disabled-users-ou,DC=domain,DC=something,DC=edu",
     "Student_Email_Domain": "@school.edu",
-    "Student_Job_Title": "school-job-title"
+    "Student_Job_Titles": "school-job-title;another-school-job-title"
   }
 }
 ```

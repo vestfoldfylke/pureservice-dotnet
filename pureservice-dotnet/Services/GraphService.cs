@@ -23,7 +23,7 @@ public class GraphService : IGraphService
     private readonly string _employeeAutoUsersOu;
     private readonly string _employeeAutoDisabledUsersOu;
     private readonly string _studentUserDomain;
-    private readonly string _studentJobTitle;
+    private readonly string[] _studentJobTitles;
     
     private readonly string[] _userProperties =
     [
@@ -49,7 +49,7 @@ public class GraphService : IGraphService
         _employeeAutoUsersOu = configuration["Employee_Auto_Users_OU"] ?? throw new InvalidOperationException("Employee_Auto_Users_OU not configured");
         _employeeAutoDisabledUsersOu = configuration["Employee_Auto_Disabled_Users_OU"] ?? throw new InvalidOperationException("Employee_Auto_Disabled_Users_OU not configured");
         _studentUserDomain = configuration["Student_Email_Domain"] ?? throw new InvalidOperationException("Student_Email_Domain not configured");
-        _studentJobTitle = configuration["Student_Job_Title"] ?? throw new InvalidOperationException("Student_Job_Title not configured");
+        _studentJobTitles = configuration["Student_Job_Titles"]?.Split(";") ?? throw new InvalidOperationException("Student_Job_Titles not configured");
     }
 
     public async Task<List<User>> GetEmployees()
@@ -76,7 +76,7 @@ public class GraphService : IGraphService
         List<User> allUsers = [];
         
         var allEmployees = await GetUsersPage(
-            $"https://graph.microsoft.com/v1.0/users?$filter=endsWith(userPrincipalName, '{_studentUserDomain}') AND jobTitle eq '{_studentJobTitle}'&$count=true&$select={string.Join(",", _userProperties)}&$top=999");
+            $"https://graph.microsoft.com/v1.0/users?$filter=endsWith(userPrincipalName, '{_studentUserDomain}') AND jobTitle in ('{string.Join("', '", _studentJobTitles)}')&$count=true&$select={string.Join(",", _userProperties)}&$top=999");
 
         allUsers.AddRange(allEmployees.Value ?? []);
         
