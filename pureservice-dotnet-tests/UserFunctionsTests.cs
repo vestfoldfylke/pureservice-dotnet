@@ -10,7 +10,6 @@ using pureservice_dotnet.Functions;
 using pureservice_dotnet.Models;
 using pureservice_dotnet.Models.Enums;
 using pureservice_dotnet.Services;
-using Vestfold.Extensions.Metrics.Services;
 
 namespace pureservice_dotnet_tests;
 
