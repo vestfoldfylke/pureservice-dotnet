@@ -82,7 +82,7 @@ public class UserFunctions
                     return;
                 }
                 
-                _logger.LogInformation("Processing Entra user {DisplayName} with EntraId {EntraId}", entraUser.DisplayName, entraUser.Id);
+                _logger.LogDebug("Processing Entra user {DisplayName} with EntraId {EntraId}", entraUser.DisplayName, entraUser.Id);
 
                 var (pureserviceUser, pureserviceManagerUser, skipUser) = GetPureserviceUserInfo(entraUser, pureserviceUsers, synchronizationResult);
                 
@@ -272,7 +272,7 @@ public class UserFunctions
         if (basicPropertiesToUpdate.Count == 0 && !usernameUpdate.Update && companyUpdate is null && departmentUpdate is null && locationUpdate is null && !updateEmail && !phoneNumberUpdate.Update)
         {
             synchronizationResult.UserUpToDateCount++;
-            _logger.LogInformation("User with UserId {UserId} is up to date", pureserviceUser.Id);
+            _logger.LogDebug("User with UserId {UserId} is up to date", pureserviceUser.Id);
             return;
         }
         
