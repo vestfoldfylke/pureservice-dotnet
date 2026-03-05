@@ -80,8 +80,8 @@ When deploying to Azure, these settings should be added to the Function App Conf
 > [!IMPORTANT]
 > Azure App Services does not allow periods (.) in the app setting names.<br />
 > So the following settings must be renamed:
-> - `Serilog_MinimumLevel_Override_Microsoft.Hosting` **->** `Serilog_MinimumLevel_Override_Microsoft_Hosting`
-> - `Serilog_MinimumLevel_Override_Microsoft.AspNetCore` **->** `Serilog_MinimumLevel_Override_Microsoft_AspNetCore`
+> - `Serilog__MinimumLevel__Override__Microsoft.Hosting` **->** `Serilog__MinimumLevel__Override__Microsoft_Hosting`
+> - `Serilog__MinimumLevel__Override__Microsoft.AspNetCore` **->** `Serilog__MinimumLevel__Override__Microsoft_AspNetCore`
 
 ### Explanation of settings and defaults
 
