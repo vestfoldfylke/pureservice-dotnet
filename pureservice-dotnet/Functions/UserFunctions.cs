@@ -131,6 +131,13 @@ public class UserFunctions
                 
                 using (LogContext.PushProperty("UserId", pureserviceUser.Id))
                 {
+                    if (entraUser.AccountEnabled.HasValue && !entraUser.AccountEnabled.Value && pureserviceUser.Disabled)
+                    {
+                        _logger.LogInformation("User with UserId {UserId} is disabled in Pureservice and Entra user with EntraId {EntraId} is disabled in Entra. Skipping further Pureservice updates", pureserviceUser.Id, entraUser.Id);
+                        synchronizationResult.UserDisabledCount++;
+                        continue;
+                    }
+                    
                     var (credential, primaryEmailAddress, primaryPhoneNumber, phoneNumberIds) = GetPureserviceUserContactInfo(pureserviceUser, pureserviceUsers, synchronizationResult);
                     if (credential is null || primaryEmailAddress is null)
                     {
@@ -143,8 +150,6 @@ public class UserFunctions
                 }
             }
         }
-        
-        // TODO: Loop through Pureservice users not existing in entra and disable them (should we anonymize them as well, if so, how?)
 
         _logger.LogInformation("UserFunctions_Synchronize finished: {@SynchronizationResult}", synchronizationResult);
     }
@@ -256,7 +261,18 @@ public class UserFunctions
                 entraUser.Manager.Id, pureserviceUser.Id);
         }
         
-        var basicPropertiesToUpdate = _pureserviceUserService.NeedsBasicUpdate(pureserviceUser, entraUser, pureserviceManagerUser);
+        // If account is disabled in Entra and not yet in Pureservice, we want to disable it in Pureservice as well, and update ONLY the Disabled property. This is because we want to keep the user's data in Pureservice intact, but just mark them as disabled
+        var shouldBeDisabled = entraUser.AccountEnabled.HasValue && !entraUser.AccountEnabled.Value && !pureserviceUser.Disabled;
+        
+        var basicPropertiesToUpdate = _pureserviceUserService.NeedsBasicUpdate(pureserviceUser, entraUser, pureserviceManagerUser, shouldBeDisabled);
+        
+        if (shouldBeDisabled && basicPropertiesToUpdate.Count == 1)
+        {
+            await _pureserviceUserService.UpdateBasicProperties(pureserviceUser.Id, basicPropertiesToUpdate);
+            _logger.LogInformation("User with UserId {UserId} has been disabled in Pureservice to match Entra user with EntraId {EntraId}. No other properties were updated to keep user data intact", pureserviceUser.Id, entraUser.Id);
+            synchronizationResult.UserBasicPropertiesUpdatedCount++;
+            return;
+        }
 
         var usernameUpdate = _pureserviceUserService.NeedsUsernameUpdate(credential, entraUser);
         

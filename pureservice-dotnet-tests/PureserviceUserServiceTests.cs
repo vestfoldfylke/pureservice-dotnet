@@ -269,20 +269,20 @@ public class PureserviceUserServiceTests
         var result = _service.NeedsBasicUpdate(pureserviceUser, entraUser, pureserviceManagerUser);
         Assert.Equal(5, result.Count);
         
+        // disabled
+        Assert.Equal(("disabled", (null, null, !entraUser.AccountEnabled)), result[0]);
+        
         // firstName
-        Assert.Equal(("firstName", (entraUser.GivenName, null, null)), result[0]);
+        Assert.Equal(("firstName", (entraUser.GivenName, null, null)), result[1]);
         
         // lastName
-        Assert.Equal(("lastName", (entraUser.Surname, null, null)), result[1]);
+        Assert.Equal(("lastName", (entraUser.Surname, null, null)), result[2]);
         
         // title
-        Assert.Equal(("title", (entraUser.JobTitle, null, null)), result[2]);
+        Assert.Equal(("title", (entraUser.JobTitle, null, null)), result[3]);
         
         // managerId
-        Assert.Equal(("managerId", (null, pureserviceManagerUser.Id, null)), result[3]);
-        
-        // disabled
-        Assert.Equal(("disabled", (null, null, !entraUser.AccountEnabled)), result[4]);
+        Assert.Equal(("managerId", (null, pureserviceManagerUser.Id, null)), result[4]);
     }
     
     // NeedsCompanyUpdate
