@@ -15,7 +15,7 @@ public interface IPureserviceUserService
     Task<User?> CreateNewUser(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId, int physicalAddressId, int? phoneNumberId, int emailAddressId);
     Task<UserList> GetUser(int userId, string[]? entities = null);
     Task<UserList> GetUsers(string[]? entities = null, int start = 0, int limit = 500, bool includeSystemUsers = false, bool includeInactiveUsers = false);
-    List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))> NeedsBasicUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser = null);
+    List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))> NeedsBasicUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser = null, bool? handleStatusOnly = false);
     CompanyUpdateItem? NeedsCompanyUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies);
     CompanyUpdateItem? NeedsDepartmentUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies, List<CompanyDepartment> companyDepartments);
     CompanyUpdateItem? NeedsLocationUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies, List<CompanyLocation> companyLocations);
@@ -193,9 +193,19 @@ public class PureserviceUserService : IPureserviceUserService
         return userList;
     }
 
-    public List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))> NeedsBasicUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser = null)
+    public List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))> NeedsBasicUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser = null, bool? handleStatusOnly = false)
     {
         List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))> propertiesToUpdate = [];
+        
+        if (pureserviceUser.Disabled != (entraUser.AccountEnabled == false))
+        {
+            propertiesToUpdate.Add(("disabled", (null, null, !entraUser.AccountEnabled)));
+        }
+        
+        if (handleStatusOnly == true)
+        {
+            return propertiesToUpdate;
+        }
         
         if (pureserviceUser.FirstName != entraUser.GivenName)
         {
@@ -215,11 +225,6 @@ public class PureserviceUserService : IPureserviceUserService
         if (pureserviceUser.ManagerId != pureserviceManagerUser?.Id)
         {
             propertiesToUpdate.Add(("managerId", (null, pureserviceManagerUser?.Id, null)));
-        }
-        
-        if (pureserviceUser.Disabled != (entraUser.AccountEnabled == false))
-        {
-            propertiesToUpdate.Add(("disabled", (null, null, !entraUser.AccountEnabled)));
         }
         
         return propertiesToUpdate;

@@ -131,6 +131,254 @@ public class UserFunctionsTests
         await _phoneNumberService.DidNotReceive().UpdatePhoneNumber(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<PhoneNumberType>(), Arg.Any<int>());
     }
 
+    [Fact]
+    public async Task Synchronize_Should_Do_Nothing_When_User_From_Pureservice_Is_Disabled_And_User_From_Entra_Is_Disabled()
+    {
+        _graphService.GetEmployees().Returns([
+            new Microsoft.Graph.Models.User
+            {
+                Id = "1",
+                AccountEnabled = false,
+                CompanyName = "Foo",
+                Mail = "foo@bar.biz"
+            }
+        ]);
+        
+        _graphService.GetStudents().Returns([
+            new Microsoft.Graph.Models.User
+            {
+                Id = "2",
+                AccountEnabled = false,
+                CompanyName = "Bar",
+                Mail = "baz@bar.biz"
+            }
+        ]);
+
+        var pureserviceUsers = new List<User>
+        {
+            new User
+            {
+                FirstName = "1",
+                LastName = "1",
+                Title = "1",
+                Disabled = true,
+                Created = DateTime.Now,
+                CreatedById = 3,
+                FlushNotifications = false,
+                HighlightNotifications = false,
+                IsAnonymized = false,
+                IsSuperuser = false,
+                Role = UserRole.Agent,
+                Unavailable = false,
+                Id = 1,
+                ImportUniqueKey = "1"
+            },
+            new User
+            {
+                FirstName = "2",
+                LastName = "2",
+                Title = "2",
+                Disabled = true,
+                Created = DateTime.Now,
+                CreatedById = 3,
+                FlushNotifications = false,
+                HighlightNotifications = false,
+                IsAnonymized = false,
+                IsSuperuser = false,
+                Role = UserRole.Agent,
+                Unavailable = false,
+                Id = 2,
+                ImportUniqueKey = "2"
+            }
+        };
+
+        var pureserviceLinked = new Linked
+        {
+            Credentials = new List<Credential>(),
+            EmailAddresses = new List<EmailAddress>(),
+            PhoneNumbers = new List<PhoneNumber>()
+        };
+        
+        _pureserviceUserService.GetUsers(Arg.Any<string[]>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<bool>())
+            .Returns(new UserList(pureserviceUsers, pureserviceLinked));
+
+        _companyService.GetCompanies().Returns([]);
+        _companyService.GetDepartments().Returns([]);
+        _companyService.GetLocations().Returns([]);
+
+        await _service.Synchronize(new TimerInfo());
+
+        await _graphService.Received(1).GetEmployees();
+        await _graphService.Received(1).GetStudents();
+        await _pureserviceUserService.Received(1).GetUsers(Arg.Any<string[]>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<bool>());
+        await _companyService.Received(1).GetCompanies();
+        await _companyService.Received(1).GetDepartments();
+        await _companyService.Received(1).GetLocations();
+        
+        await _companyService.DidNotReceive().AddCompany(Arg.Any<string>());
+        _pureserviceCaller.DidNotReceive().NeedsToWait(Arg.Any<int>());
+        await _physicalAddressService.DidNotReceive().AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
+        _graphService.DidNotReceive().GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<string>(), Arg.Any<string>());
+        await _phoneNumberService.DidNotReceive().AddNewPhoneNumber(Arg.Any<string>(), Arg.Any<PhoneNumberType>());
+        await _emailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());
+        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+        
+        _pureserviceUserService.DidNotReceive().NeedsBasicUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<User>());
+        _pureserviceUserService.DidNotReceive().NeedsCompanyUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>());
+        _pureserviceUserService.DidNotReceive().NeedsDepartmentUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>(), Arg.Any<List<CompanyDepartment>>());
+        _pureserviceUserService.DidNotReceive().NeedsLocationUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>(), Arg.Any<List<CompanyLocation>>());
+        _phoneNumberService.DidNotReceive().NeedsPhoneNumberUpdate(Arg.Any<PhoneNumber>(), Arg.Any<string>());
+        await _pureserviceUserService.DidNotReceive().UpdateBasicProperties(Arg.Any<int>(), Arg.Any<List<(string, (string?, int?, bool?))>>());
+        await _companyService.DidNotReceive().AddDepartment(Arg.Any<string>(), Arg.Any<int>());
+        await _companyService.DidNotReceive().AddLocation(Arg.Any<string>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().UpdateCompanyProperties(Arg.Any<int>(), Arg.Any<List<CompanyUpdateItem>>());
+        await _emailAddressService.DidNotReceive().UpdateEmailAddress(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().RegisterPhoneNumberAsDefault(Arg.Any<int>(), Arg.Any<int>());
+        await _phoneNumberService.DidNotReceive().AddNewPhoneNumberAndLinkToUser(Arg.Any<string>(), Arg.Any<PhoneNumberType>(), Arg.Any<int>());
+        await _phoneNumberService.DidNotReceive().UpdatePhoneNumber(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<PhoneNumberType>(), Arg.Any<int>());
+    }
+
+    [Fact]
+    public async Task Synchronize_Should_Update_All_Properties_When_User_Is_ReEnabled_In_Entra()
+    {
+        var entraUser = new Microsoft.Graph.Models.User
+        {
+            Id = "1",
+            AccountEnabled = true,
+            CompanyName = "Foo",
+            GivenName = "42",
+            Surname = "43",
+            Mail = "foo@bar.biz",
+            JobTitle = "Supperådgiver",
+            UserPrincipalName = "foo@bar.biz"
+        };
+        
+        var credential = new Credential
+        {
+            Id = 1,
+            Username = "baz@bar.biz",
+            Created = DateTime.Now,
+            CreatedById = 3,
+            LoginCount = 0
+        };
+
+        var emailAddress = new EmailAddress
+        {
+            Id = 1,
+            Email = "baz@bar.biz",
+            Created = DateTime.Now,
+            CreatedById = 3
+        };
+
+        var pureserviceUser = new User
+        {
+            FirstName = "1",
+            LastName = "1",
+            Title = "1",
+            Disabled = true,
+            Created = DateTime.Now,
+            CreatedById = 3,
+            FlushNotifications = false,
+            HighlightNotifications = false,
+            IsAnonymized = false,
+            IsSuperuser = false,
+            Role = UserRole.Agent,
+            Unavailable = false,
+            Id = 1,
+            ImportUniqueKey = "1",
+            Links = new Links
+            {
+                Credentials = new Link(credential.Id, "Credential"),
+                EmailAddress =  new Link(emailAddress.Id, "Email")
+            }
+        };
+        
+        _graphService.GetEmployees().Returns([entraUser]);
+        _graphService.GetStudents().Returns([]);
+
+        var pureserviceUsers = new List<User>
+        {
+            pureserviceUser
+        };
+
+        var pureserviceLinked = new Linked
+        {
+            Credentials = new List<Credential>
+            {
+                credential
+            },
+            EmailAddresses = new List<EmailAddress>
+            {
+                emailAddress
+            },
+            PhoneNumbers = new List<PhoneNumber>()
+        };
+        
+        var basicPropertiesToUpdate = new List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))>
+        {
+            ("disabled", (null, null, false)),
+            ("firstName", (entraUser.GivenName, null, null)),
+            ("lastName", (entraUser.Surname, null, null)),
+            ("title", (entraUser.JobTitle, null, null))
+        };
+        
+        _pureserviceUserService.GetUsers(Arg.Any<string[]>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<bool>())
+            .Returns(new UserList(pureserviceUsers, pureserviceLinked));
+
+        _companyService.GetCompanies().Returns([]);
+        _companyService.GetDepartments().Returns([]);
+        _companyService.GetLocations().Returns([]);
+
+        _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((false, 0, null));
+        _pureserviceUserService.NeedsBasicUpdate(pureserviceUser, entraUser, handleStatusOnly: false).Returns(basicPropertiesToUpdate);
+        _pureserviceUserService.NeedsUsernameUpdate(credential, entraUser).Returns((true, entraUser.UserPrincipalName));
+        _pureserviceUserService.NeedsCompanyUpdate(pureserviceUser, entraUser, []).ReturnsNull();
+        _pureserviceUserService.NeedsDepartmentUpdate(pureserviceUser, entraUser, [], []).ReturnsNull();
+        _pureserviceUserService.NeedsLocationUpdate(pureserviceUser, entraUser, [], []).ReturnsNull();
+        _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").ReturnsNull();
+        _phoneNumberService.NeedsPhoneNumberUpdate(null, null).Returns((false, null));
+        _pureserviceUserService.UpdateBasicProperties(pureserviceUser.Id, Arg.Any<List<(string, (string?, int?, bool?))>>()).Returns(true);
+        _pureserviceUserService.UpdateUsername(pureserviceUser.Id, credential.Id, entraUser.UserPrincipalName).Returns(true);
+        _emailAddressService.UpdateEmailAddress(emailAddress.Id, entraUser.Mail, pureserviceUser.Id).Returns(true);
+        
+        await _service.Synchronize(new TimerInfo());
+        
+        await _graphService.Received(1).GetEmployees();
+        await _graphService.Received(1).GetStudents();
+        await _pureserviceUserService.Received(1).GetUsers(Arg.Any<string[]>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<bool>());
+        await _companyService.Received(1).GetCompanies();
+        await _companyService.Received(1).GetDepartments();
+        await _companyService.Received(1).GetLocations();
+        
+        _pureserviceCaller.Received(1).NeedsToWait(Arg.Any<int>());
+        _pureserviceUserService.Received(1).NeedsBasicUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), handleStatusOnly: false);
+        _pureserviceUserService.Received(1).NeedsUsernameUpdate(Arg.Any<Credential>(), Arg.Any<Microsoft.Graph.Models.User>());
+        _pureserviceUserService.Received(1).NeedsCompanyUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>());
+        _pureserviceUserService.Received(1).NeedsDepartmentUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>(), Arg.Any<List<CompanyDepartment>>());
+        _pureserviceUserService.Received(1).NeedsLocationUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>(), Arg.Any<List<CompanyLocation>>());
+        _graphService.Received(1).GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<string>(), Arg.Any<string>());
+        _phoneNumberService.Received(1).NeedsPhoneNumberUpdate(Arg.Any<PhoneNumber>(), Arg.Any<string>());
+        
+        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<(string, (string?, int?, bool?))>>(bui =>
+            bui.Count == 4 &&
+            bui.Exists(b => b.Item1 == "disabled" && b.Item2.Item3 == false) &&
+            bui.Exists(b => b.Item1 == "firstName" && b.Item2.Item1 == entraUser.GivenName) &&
+            bui.Exists(b => b.Item1 == "lastName" && b.Item2.Item1 == entraUser.Surname) &&
+            bui.Exists(b => b.Item1 == "title" && b.Item2.Item1 == entraUser.JobTitle)
+        ));
+        await _pureserviceUserService.Received(1).UpdateUsername(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
+        await _emailAddressService.Received(1).UpdateEmailAddress(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<int>());
+
+        await _pureserviceUserService.DidNotReceive().UpdateCompanyProperties(Arg.Any<int>(), Arg.Any<List<CompanyUpdateItem>>());
+        await _pureserviceUserService.DidNotReceive().RegisterPhoneNumberAsDefault(Arg.Any<int>(), Arg.Any<int>());
+        await _phoneNumberService.DidNotReceive().AddNewPhoneNumberAndLinkToUser(Arg.Any<string>(), Arg.Any<PhoneNumberType>(), Arg.Any<int>());
+        await _phoneNumberService.DidNotReceive().UpdatePhoneNumber(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<PhoneNumberType>(), Arg.Any<int>());
+        await _companyService.DidNotReceive().AddCompany(Arg.Any<string>());
+        await _companyService.DidNotReceive().AddDepartment(Arg.Any<string>(), Arg.Any<int>());
+        await _companyService.DidNotReceive().AddLocation(Arg.Any<string>(), Arg.Any<int>());
+    } 
+
     // UpdateUser
     [Theory]
     [InlineData(5, 5, 5)]
@@ -1501,6 +1749,109 @@ public class UserFunctionsTests
             await _phoneNumberService.DidNotReceive().UpdatePhoneNumber(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<PhoneNumberType>(), Arg.Any<int>());
         }
         
+        await _companyService.DidNotReceive().AddDepartment(Arg.Any<string>(), Arg.Any<int>());
+        await _companyService.DidNotReceive().AddLocation(Arg.Any<string>(), Arg.Any<int>());
+    }
+
+    [Fact]
+    public async Task UpdateUser_Should_Only_Update_Disabled_Property_When_User_Is_Disabled_In_Entra_Even_Though_Many_Properties_Have_Changed()
+    {
+        var pureserviceUser = new User
+        {
+            FirstName = "1",
+            LastName = "1",
+            Title = "1",
+            Disabled = false,
+            Created = DateTime.Now,
+            CreatedById = 3,
+            FlushNotifications = false,
+            HighlightNotifications = false,
+            IsAnonymized = false,
+            IsSuperuser = false,
+            Role = UserRole.Agent,
+            Unavailable = false,
+            Id = 1,
+            ImportUniqueKey = "1"
+        };
+        
+        var entraUser = new Microsoft.Graph.Models.User
+        {
+            Id = "1",
+            AccountEnabled = false,
+            CompanyName = "Foo",
+            Department = "Bar",
+            OfficeLocation = "Biz",
+            GivenName = "42",
+            Surname = "43",
+            Mail = "foo@bar.biz",
+            JobTitle = "Supperådgiver",
+            UserPrincipalName = "foo@bar.biz"
+        };
+
+        var credential = new Credential
+        {
+            Id = 1,
+            Username = "baz@bar.biz",
+            Created = DateTime.Now,
+            CreatedById = 3,
+            LoginCount = 0
+        };
+
+        var emailAddress = new EmailAddress
+        {
+            Id = 1,
+            Email = "baz@bar.biz",
+            Created = DateTime.Now,
+            CreatedById = 3
+        };
+
+        var shouldBeDisabled = entraUser.AccountEnabled.HasValue && !entraUser.AccountEnabled.Value && !pureserviceUser.Disabled;
+        
+        var synchronizationResult = new SynchronizationResult();
+
+        _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((false, 0, null));
+        _pureserviceUserService.NeedsBasicUpdate(pureserviceUser, entraUser, handleStatusOnly: shouldBeDisabled).Returns([
+            ("disabled", (null, null, shouldBeDisabled))
+        ]);
+
+        await _service.UpdateUser(pureserviceUser, entraUser, credential, emailAddress, null, [], null, [], [], [],
+            synchronizationResult);
+        
+        Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCredentialsCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
+        Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
+        Assert.Equal(1, synchronizationResult.UserHandledCount);
+        Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
+        Assert.Equal(1, synchronizationResult.UserBasicPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserErrorCount);
+        Assert.Equal(0, synchronizationResult.UserCreatedCount);
+        
+        _pureserviceCaller.Received(1).NeedsToWait(Arg.Any<int>());
+        _pureserviceUserService.Received(1).NeedsBasicUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), handleStatusOnly: shouldBeDisabled);
+        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Any<int>(), Arg.Is<List<(string, (string?, int?, bool?))>>(bui =>
+            bui.Count == 1 &&
+            bui.Exists(b => b.Item1 == "disabled" && b.Item2.Item3 == true)));
+        
+        _pureserviceUserService.DidNotReceive().NeedsUsernameUpdate(Arg.Any<Credential>(), Arg.Any<Microsoft.Graph.Models.User>());
+        _pureserviceUserService.DidNotReceive().NeedsCompanyUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>());
+        _pureserviceUserService.DidNotReceive().NeedsDepartmentUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>(), Arg.Any<List<CompanyDepartment>>());
+        _pureserviceUserService.DidNotReceive().NeedsLocationUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>(), Arg.Any<List<CompanyLocation>>());
+        _graphService.DidNotReceive().GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<string>(), Arg.Any<string>());
+        _phoneNumberService.DidNotReceive().NeedsPhoneNumberUpdate(Arg.Any<PhoneNumber>(), Arg.Any<string>());
+
+        await _pureserviceUserService.DidNotReceive().UpdateCompanyProperties(Arg.Any<int>(), Arg.Any<List<CompanyUpdateItem>>());
+        await _pureserviceUserService.DidNotReceive().UpdateUsername(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
+        await _emailAddressService.DidNotReceive().UpdateEmailAddress(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().RegisterPhoneNumberAsDefault(Arg.Any<int>(), Arg.Any<int>());
+        await _phoneNumberService.DidNotReceive().AddNewPhoneNumberAndLinkToUser(Arg.Any<string>(), Arg.Any<PhoneNumberType>(), Arg.Any<int>());
+        await _phoneNumberService.DidNotReceive().UpdatePhoneNumber(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<PhoneNumberType>(), Arg.Any<int>());
+        await _companyService.DidNotReceive().AddCompany(Arg.Any<string>());
         await _companyService.DidNotReceive().AddDepartment(Arg.Any<string>(), Arg.Any<int>());
         await _companyService.DidNotReceive().AddLocation(Arg.Any<string>(), Arg.Any<int>());
     }

@@ -4,6 +4,8 @@ Synchronization service to add / update / disable / enable user objects in Pures
 
 ## Properties handled on employees from `Entra ID`
 
+<b>All properties are kept in sync as long as the user is enabled in Entra ID. When a user is disabled in Entra ID, only the `disabled` property is kept in sync (set to true in Pureservice). When a user is re-enabled in Entra ID, all properties are kept in sync again.</b>
+
 | Property in Pureservice | Property in Source | Description                                                      | Category     | Type   | Default Value |
 |------------------------|--------------------|-------------------------------------------------------------------|--------------|--------|---------------|
 | firstName              | givenName          | First name                                                        | basic        | string | null          |
@@ -22,6 +24,8 @@ Synchronization service to add / update / disable / enable user objects in Pures
 | username               | userPrincipalName  | Username (update does not work for users with role Administrator) | basic        | int    | null          |
 
 ## Properties handled on students from `Entra ID`
+
+<b>All properties are kept in sync as long as the user is enabled in Entra ID. When a user is disabled in Entra ID, only the `disabled` property is kept in sync (set to true in Pureservice). When a user is re-enabled in Entra ID, all properties are kept in sync again.</b>
 
 | Property in Pureservice | Property in Source | Description                                                      | Category     | Type   | Default Value |
 |------------------------|--------------------|-------------------------------------------------------------------|--------------|--------|---------------|
