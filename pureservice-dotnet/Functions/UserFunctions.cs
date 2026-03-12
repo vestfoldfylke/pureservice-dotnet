@@ -133,7 +133,7 @@ public class UserFunctions
                 {
                     if (entraUser.AccountEnabled.HasValue && !entraUser.AccountEnabled.Value && pureserviceUser.Disabled)
                     {
-                        _logger.LogInformation("User with UserId {UserId} is disabled in Pureservice and Entra user with EntraId {EntraId} is disabled in Entra. Skipping further Pureservice updates", pureserviceUser.Id, entraUser.Id);
+                        _logger.LogDebug("User with UserId {UserId} is disabled in Pureservice and Entra user with EntraId {EntraId} is disabled in Entra. Skipping further Pureservice checking/updating", pureserviceUser.Id, entraUser.Id);
                         synchronizationResult.UserDisabledCount++;
                         continue;
                     }
