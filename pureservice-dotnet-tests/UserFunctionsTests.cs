@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 using NSubstitute.ReturnsExtensions;
+using pureservice_dotnet;
 using pureservice_dotnet.Functions;
 using pureservice_dotnet.Models;
 using pureservice_dotnet.Models.Enums;
@@ -66,7 +67,7 @@ public class UserFunctionsTests
         _graphService.DidNotReceive().GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<string>(), Arg.Any<string>());
         await _phoneNumberService.DidNotReceive().AddNewPhoneNumber(Arg.Any<string>(), Arg.Any<PhoneNumberType>());
         await _emailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());
-        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
         await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
         
         _pureserviceUserService.DidNotReceive().NeedsBasicUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<User>());
@@ -113,7 +114,7 @@ public class UserFunctionsTests
         _graphService.DidNotReceive().GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<string>(), Arg.Any<string>());
         await _phoneNumberService.DidNotReceive().AddNewPhoneNumber(Arg.Any<string>(), Arg.Any<PhoneNumberType>());
         await _emailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());
-        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
         await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
         
         _pureserviceUserService.DidNotReceive().NeedsBasicUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<User>());
@@ -221,7 +222,7 @@ public class UserFunctionsTests
         _graphService.DidNotReceive().GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<string>(), Arg.Any<string>());
         await _phoneNumberService.DidNotReceive().AddNewPhoneNumber(Arg.Any<string>(), Arg.Any<PhoneNumberType>());
         await _emailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());
-        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
         await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
         
         _pureserviceUserService.DidNotReceive().NeedsBasicUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<User>());
@@ -336,7 +337,7 @@ public class UserFunctionsTests
         _pureserviceUserService.NeedsCompanyUpdate(pureserviceUser, entraUser, []).ReturnsNull();
         _pureserviceUserService.NeedsDepartmentUpdate(pureserviceUser, entraUser, [], []).ReturnsNull();
         _pureserviceUserService.NeedsLocationUpdate(pureserviceUser, entraUser, [], []).ReturnsNull();
-        _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").ReturnsNull();
+        _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPhoneNumberAttributeName).ReturnsNull();
         _phoneNumberService.NeedsPhoneNumberUpdate(null, null).Returns((false, null));
         _pureserviceUserService.UpdateBasicProperties(pureserviceUser.Id, Arg.Any<List<(string, (string?, int?, bool?))>>()).Returns(true);
         _pureserviceUserService.UpdateUsername(pureserviceUser.Id, credential.Id, entraUser.UserPrincipalName).Returns(true);
@@ -357,7 +358,7 @@ public class UserFunctionsTests
         _pureserviceUserService.Received(1).NeedsCompanyUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>());
         _pureserviceUserService.Received(1).NeedsDepartmentUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>(), Arg.Any<List<CompanyDepartment>>());
         _pureserviceUserService.Received(1).NeedsLocationUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>(), Arg.Any<List<CompanyLocation>>());
-        _graphService.Received(1).GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<string>(), Arg.Any<string>());
+        _graphService.Received(1).GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Is(Constants.CustomSecurityAttributeGroup), Arg.Is(Constants.CustomSecurityPhoneNumberAttributeName));
         _phoneNumberService.Received(1).NeedsPhoneNumberUpdate(Arg.Any<PhoneNumber>(), Arg.Any<string>());
         
         await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<(string, (string?, int?, bool?))>>(bui =>
@@ -583,7 +584,7 @@ public class UserFunctionsTests
         _pureserviceUserService.NeedsCompanyUpdate(pureserviceUser, entraUser, companies).Returns(new CompanyUpdateItem("companyId", companyId));
         _pureserviceUserService.NeedsDepartmentUpdate(pureserviceUser, entraUser, companies, departments).Returns(new CompanyUpdateItem("companyDepartmentId", departmentId));
         _pureserviceUserService.NeedsLocationUpdate(pureserviceUser, entraUser, companies, locations).Returns(new CompanyUpdateItem("companyLocationId", locationId));
-        _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").ReturnsNull();
+        _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPhoneNumberAttributeName).ReturnsNull();
         _phoneNumberService.NeedsPhoneNumberUpdate(null, null).Returns((false, null));
         
         var exception = await Record.ExceptionAsync(async () => await _service.UpdateUser(pureserviceUser, entraUser, credential, emailAddress, null, [], null, companies,
@@ -727,7 +728,7 @@ public class UserFunctionsTests
         _pureserviceUserService.NeedsCompanyUpdate(pureserviceUser, entraUser, companies).ReturnsNull();
         _pureserviceUserService.NeedsDepartmentUpdate(pureserviceUser, entraUser, companies, departments).Returns(new CompanyUpdateItem("companyDepartmentId", departmentId));
         _pureserviceUserService.NeedsLocationUpdate(pureserviceUser, entraUser, companies, locations).Returns(new CompanyUpdateItem("companyLocationId", locationId));
-        _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").ReturnsNull();
+        _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPhoneNumberAttributeName).ReturnsNull();
         _phoneNumberService.NeedsPhoneNumberUpdate(null, null).Returns((false, null));
         
         var exception = await Record.ExceptionAsync(async () => await _service.UpdateUser(pureserviceUser, entraUser, credential, emailAddress, null, [], null, companies,
@@ -951,7 +952,7 @@ public class UserFunctionsTests
         _pureserviceUserService.NeedsCompanyUpdate(pureserviceUser, entraUser, companies).Returns(new CompanyUpdateItem("companyId", newCompanyId));
         _pureserviceUserService.NeedsDepartmentUpdate(pureserviceUser, entraUser, companies, departments).Returns(new CompanyUpdateItem("companyDepartmentId", newDepartmentId));
         _pureserviceUserService.NeedsLocationUpdate(pureserviceUser, entraUser, companies, locations).Returns(new CompanyUpdateItem("companyLocationId", newLocationId));
-        _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").Returns(newMobile);
+        _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPhoneNumberAttributeName).Returns(newMobile);
         _phoneNumberService.NeedsPhoneNumberUpdate(phoneNumberExists ? phoneNumber : null, newMobile).Returns((true, newMobile));
         _pureserviceUserService.UpdateBasicProperties(pureserviceUser.Id, Arg.Any<List<(string, (string?, int?, bool?))>>()).Returns(true);
         _pureserviceUserService.UpdateUsername(pureserviceUser.Id, credential.Id, newEmail).Returns(true);
@@ -1194,7 +1195,7 @@ public class UserFunctionsTests
         _pureserviceUserService.NeedsCompanyUpdate(pureserviceUser, entraUser, companies).ReturnsNull();
         _pureserviceUserService.NeedsDepartmentUpdate(pureserviceUser, entraUser, companies, departments).Returns(new CompanyUpdateItem("companyDepartmentId", newDepartmentId));
         _pureserviceUserService.NeedsLocationUpdate(pureserviceUser, entraUser, companies, locations).Returns(new CompanyUpdateItem("companyLocationId", newLocationId));
-        _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").Returns(newMobile);
+        _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPhoneNumberAttributeName).Returns(newMobile);
         _phoneNumberService.NeedsPhoneNumberUpdate(phoneNumberExists ? phoneNumber : null, newMobile).Returns((true, newMobile));
         _pureserviceUserService.UpdateBasicProperties(pureserviceUser.Id, Arg.Any<List<(string, (string?, int?, bool?))>>()).Returns(true);
         _pureserviceUserService.UpdateUsername(pureserviceUser.Id, credential.Id, newEmail).Returns(true);
@@ -1440,7 +1441,7 @@ public class UserFunctionsTests
         _pureserviceUserService.NeedsCompanyUpdate(pureserviceUser, entraUser, companies).ReturnsNull();
         _pureserviceUserService.NeedsDepartmentUpdate(pureserviceUser, entraUser, companies, departments).Returns(new CompanyUpdateItem("companyDepartmentId", null, newDepartmentName));
         _pureserviceUserService.NeedsLocationUpdate(pureserviceUser, entraUser, companies, locations).Returns(new CompanyUpdateItem("companyLocationId", null, newLocationName));
-        _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").Returns(newMobile);
+        _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPhoneNumberAttributeName).Returns(newMobile);
         _phoneNumberService.NeedsPhoneNumberUpdate(phoneNumberExists ? phoneNumber : null, newMobile).Returns((true, newMobile));
 
         _companyService.AddDepartment(newDepartmentName, companyId).Returns(newDepartment);
@@ -1681,7 +1682,7 @@ public class UserFunctionsTests
         _pureserviceUserService.NeedsCompanyUpdate(pureserviceUser, entraUser, companies).Returns(new CompanyUpdateItem("companyId", null, newCompanyName));
         _pureserviceUserService.NeedsDepartmentUpdate(pureserviceUser, entraUser, companies, departments).ReturnsNull();
         _pureserviceUserService.NeedsLocationUpdate(pureserviceUser, entraUser, companies, locations).ReturnsNull();
-        _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").Returns(newMobile);
+        _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPhoneNumberAttributeName).Returns(newMobile);
         _phoneNumberService.NeedsPhoneNumberUpdate(phoneNumberExists ? phoneNumber : null, newMobile).Returns((true, newMobile));
 
         _companyService.AddCompany(newCompanyName).Returns(newCompany);
@@ -1960,7 +1961,7 @@ public class UserFunctionsTests
         _pureserviceUserService.NeedsCompanyUpdate(pureserviceUser, entraUser, companies).ReturnsNull();
         _pureserviceUserService.NeedsDepartmentUpdate(pureserviceUser, entraUser, companies, departments).ReturnsNull();
         _pureserviceUserService.NeedsLocationUpdate(pureserviceUser, entraUser, companies, locations).ReturnsNull();
-        _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").ReturnsNull();
+        _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPhoneNumberAttributeName).ReturnsNull();
         _phoneNumberService.NeedsPhoneNumberUpdate(null, null).Returns((false, null));
         
         var exception = await Record.ExceptionAsync(async () => await _service.UpdateUser(pureserviceUser, entraUser, credential, emailAddress, null, [], null, companies,
@@ -2074,7 +2075,7 @@ public class UserFunctionsTests
         _graphService.DidNotReceive().GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<string>(), Arg.Any<string>());
         await _phoneNumberService.DidNotReceive().AddNewPhoneNumber(Arg.Any<string>(), Arg.Any<PhoneNumberType>());
         await _emailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());
-        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
         await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
     }
     
@@ -2151,7 +2152,7 @@ public class UserFunctionsTests
         _graphService.DidNotReceive().GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<string>(), Arg.Any<string>());
         await _phoneNumberService.DidNotReceive().AddNewPhoneNumber(Arg.Any<string>(), Arg.Any<PhoneNumberType>());
         await _emailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());
-        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
         await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
     }
     
@@ -2206,7 +2207,7 @@ public class UserFunctionsTests
 
         _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((false, 0, null));
         _physicalAddressService.AddNewPhysicalAddress(null, null, null, "Norway").Returns(newPhysicalAddress);
-        _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").Returns(mobile);
+        _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPhoneNumberAttributeName).Returns(mobile);
         _phoneNumberService.AddNewPhoneNumber(mobile, PhoneNumberType.Mobile).ReturnsNull();
         
         var exception = await Record.ExceptionAsync(async () => await _service.CreateUser(entraUser, null, companyId, department, location, synchronizationResult));
@@ -2228,11 +2229,11 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
         await _physicalAddressService.Received(1).AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Is("Norway"));
-        _graphService.Received(1).GetCustomSecurityAttribute(Arg.Is(entraUser), Arg.Is("IDM"), Arg.Is("Mobile"));
+        _graphService.Received(1).GetCustomSecurityAttribute(Arg.Is(entraUser), Arg.Is(Constants.CustomSecurityAttributeGroup), Arg.Is(Constants.CustomSecurityPhoneNumberAttributeName));
         await _phoneNumberService.Received(1).AddNewPhoneNumber(Arg.Is(mobile), Arg.Is(PhoneNumberType.Mobile));
         
         await _emailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());
-        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
         await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
     }
     
@@ -2288,7 +2289,7 @@ public class UserFunctionsTests
 
         _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((false, 0, null));
         _physicalAddressService.AddNewPhysicalAddress(null, null, null, "Norway").Returns(newPhysicalAddress);
-        _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").Returns(mobile);
+        _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPhoneNumberAttributeName).Returns(mobile);
         _phoneNumberService.AddNewPhoneNumber(mobile, PhoneNumberType.Mobile).Returns(newPhoneNumber);
         
         var exception = await Record.ExceptionAsync(async () => await _service.CreateUser(entraUser, null, companyId, department, location, synchronizationResult));
@@ -2310,11 +2311,11 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
         await _physicalAddressService.Received(1).AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Is("Norway"));
-        _graphService.Received(1).GetCustomSecurityAttribute(Arg.Is(entraUser), Arg.Is("IDM"), Arg.Is("Mobile"));
+        _graphService.Received(1).GetCustomSecurityAttribute(Arg.Is(entraUser), Arg.Is(Constants.CustomSecurityAttributeGroup), Arg.Is(Constants.CustomSecurityPhoneNumberAttributeName));
         await _phoneNumberService.Received(1).AddNewPhoneNumber(Arg.Is(mobile), Arg.Is(PhoneNumberType.Mobile));
         await _emailAddressService.Received(1).AddNewEmailAddress(Arg.Is(entraUser.UserPrincipalName));
         
-        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
         await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
     }
     
@@ -2377,7 +2378,7 @@ public class UserFunctionsTests
 
         _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((false, 0, null));
         _physicalAddressService.AddNewPhysicalAddress(null, null, null, "Norway").Returns(newPhysicalAddress);
-        _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").Returns(mobile);
+        _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPhoneNumberAttributeName).Returns(mobile);
         _phoneNumberService.AddNewPhoneNumber(mobile, PhoneNumberType.Mobile).Returns(newPhoneNumber);
         _emailAddressService.AddNewEmailAddress(entraUser.UserPrincipalName).Returns(newEmailAddress);
         
@@ -2400,10 +2401,10 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
         await _physicalAddressService.Received(1).AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Is("Norway"));
-        _graphService.Received(1).GetCustomSecurityAttribute(Arg.Is(entraUser), Arg.Is("IDM"), Arg.Is("Mobile"));
+        _graphService.Received(1).GetCustomSecurityAttribute(Arg.Is(entraUser), Arg.Is(Constants.CustomSecurityAttributeGroup), Arg.Is(Constants.CustomSecurityPhoneNumberAttributeName));
         await _phoneNumberService.Received(1).AddNewPhoneNumber(Arg.Is(mobile), Arg.Is(PhoneNumberType.Mobile));
         await _emailAddressService.Received(1).AddNewEmailAddress(Arg.Is(entraUser.UserPrincipalName));
-        await _pureserviceUserService.Received(1).CreateNewUser(Arg.Is(entraUser), Arg.Any<int?>(), Arg.Is(companyId), Arg.Is(newPhysicalAddress.Id), Arg.Is(newPhoneNumber.Id), Arg.Is(newEmailAddress.Id));
+        await _pureserviceUserService.Received(1).CreateNewUser(Arg.Is(entraUser), Arg.Any<int?>(), Arg.Is(companyId), Arg.Is(newPhysicalAddress.Id), Arg.Is(newPhoneNumber.Id), Arg.Is(newEmailAddress.Id), Arg.Any<string>());
         
         await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
     }
@@ -2492,10 +2493,10 @@ public class UserFunctionsTests
 
         _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((false, 0, null));
         _physicalAddressService.AddNewPhysicalAddress(null, null, null, "Norway").Returns(newPhysicalAddress);
-        _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile").Returns(mobile);
+        _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPhoneNumberAttributeName).Returns(mobile);
         _phoneNumberService.AddNewPhoneNumber(mobile, PhoneNumberType.Mobile).Returns(newPhoneNumber);
         _emailAddressService.AddNewEmailAddress(entraUser.UserPrincipalName).Returns(newEmailAddress);
-        _pureserviceUserService.CreateNewUser(entraUser, null, companyId, newPhysicalAddress.Id, newPhoneNumber.Id, newEmailAddress.Id).Returns(newPureserviceUser);
+        _pureserviceUserService.CreateNewUser(entraUser, null, companyId, newPhysicalAddress.Id, newPhoneNumber.Id, newEmailAddress.Id, Arg.Any<string>()).Returns(newPureserviceUser);
         
         var exception = await Record.ExceptionAsync(async () => await _service.CreateUser(entraUser, null, companyId, department, location, synchronizationResult));
         Assert.Null(exception);
@@ -2516,10 +2517,10 @@ public class UserFunctionsTests
         Assert.Equal(1, synchronizationResult.UserCreatedCount);
         
         await _physicalAddressService.Received(1).AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Is("Norway"));
-        _graphService.Received(1).GetCustomSecurityAttribute(Arg.Is(entraUser), Arg.Is("IDM"), Arg.Is("Mobile"));
+        _graphService.Received(1).GetCustomSecurityAttribute(Arg.Is(entraUser), Arg.Is(Constants.CustomSecurityAttributeGroup), Arg.Is(Constants.CustomSecurityPhoneNumberAttributeName));
         await _phoneNumberService.Received(1).AddNewPhoneNumber(Arg.Is(mobile), Arg.Is(PhoneNumberType.Mobile));
         await _emailAddressService.Received(1).AddNewEmailAddress(Arg.Is(entraUser.UserPrincipalName));
-        await _pureserviceUserService.Received(1).CreateNewUser(Arg.Is(entraUser), Arg.Any<int?>(), Arg.Is(companyId), Arg.Is(newPhysicalAddress.Id), Arg.Is(newPhoneNumber.Id), Arg.Is(newEmailAddress.Id));
+        await _pureserviceUserService.Received(1).CreateNewUser(Arg.Is(entraUser), Arg.Any<int?>(), Arg.Is(companyId), Arg.Is(newPhysicalAddress.Id), Arg.Is(newPhoneNumber.Id), Arg.Is(newEmailAddress.Id), Arg.Any<string>());
         
         if (hasLocation)
         {

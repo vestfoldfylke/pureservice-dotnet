@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using NSubstitute.ReturnsExtensions;
@@ -14,13 +16,21 @@ public class PureserviceUserServiceTests
 {
     private readonly PureserviceUserService _service;
     private readonly IPureserviceCaller _pureserviceCaller;
+
+    private readonly string _userTypeCustomField;
     
     public PureserviceUserServiceTests()
     {
         _pureserviceCaller = Substitute.For<IPureserviceCaller>();
         
-        _service = new PureserviceUserService(Substitute.For<ILogger<PureserviceUserService>>(),
+        var userServiceConfiguration = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.json")
+            .Build();
+        
+        _service = new PureserviceUserService(userServiceConfiguration, Substitute.For<ILogger<PureserviceUserService>>(),
             Substitute.For<IMetricsService>(), _pureserviceCaller);
+        
+        _userTypeCustomField = userServiceConfiguration["User_Type_Custom_Field_Id"] ?? throw new InvalidOperationException("User_Type_Custom_Field_Id configuration value is not set");
     }
 
     // CreateNewUser
@@ -46,6 +56,8 @@ public class PureserviceUserServiceTests
         const int emailAddressId = 9;
         const int physicalAddressId = 7;
         const int phoneNumberId = 8;
+
+        var userType = allProperties ? "Biz" : null;
 
         var newPureserviceUser = new User
         {
@@ -77,7 +89,7 @@ public class PureserviceUserServiceTests
         _pureserviceCaller.PostAsync<User>(Arg.Is<string>(s => s.StartsWith("user")), Arg.Any<object>())
             .Returns(newPureserviceUser);
         
-        var userList = await _service.CreateNewUser(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId);
+        var userList = await _service.CreateNewUser(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId, userType);
         
         Assert.NotNull(userList);
     }
@@ -103,6 +115,8 @@ public class PureserviceUserServiceTests
         const int companyId = 42;
         const int emailAddressId = 9;
         const int physicalAddressId = 7;
+        
+        const string userType = "Biz";
         
         int? phoneNumberId = hasPhoneNumber ? 8 : null;
 
@@ -138,7 +152,7 @@ public class PureserviceUserServiceTests
             Arg.Is<object>(o => HasPayloadPhoneNumber(o, hasPhoneNumber))
         ).Returns(newPureserviceUser);
         
-        var userList = await _service.CreateNewUser(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId);
+        var userList = await _service.CreateNewUser(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId, userType);
         
         Assert.NotNull(userList);
     }
@@ -160,11 +174,13 @@ public class PureserviceUserServiceTests
         const int emailAddressId = 9;
         const int physicalAddressId = 7;
         const int phoneNumberId = 8;
+        
+        const string userType = "Biz";
 
         _pureserviceCaller.PostAsync<User>(Arg.Is<string>(s => s.StartsWith("user")), Arg.Any<object>())
             .ReturnsNull();
         
-        var userList = await _service.CreateNewUser(entraUser, null, companyId, physicalAddressId, phoneNumberId, emailAddressId);
+        var userList = await _service.CreateNewUser(entraUser, null, companyId, physicalAddressId, phoneNumberId, emailAddressId, userType);
         
         Assert.Null(userList);
     }
@@ -1025,13 +1041,66 @@ public class PureserviceUserServiceTests
         Assert.True(result);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void GetNewUserPayload_Should_Return_Payload_With_Or_Without_UserType_And_In_Expected_Format_When_Serialized(bool hasUserType)
+    {
+        const int managerId = 1337;
+        
+        var entraUser = new Microsoft.Graph.Models.User
+        {
+            GivenName = "Foo",
+            Surname = "Bar",
+            DisplayName = "Foo Bar",
+            JobTitle = "Supperådgiver",
+            Manager = new Microsoft.Graph.Models.User { Id = managerId.ToString() },
+            AccountEnabled = true,
+            Id = "69"
+        };
+
+        const int companyId = 42;
+        const int emailAddressId = 9;
+        const int physicalAddressId = 7;
+        const int phoneNumberId = 8;
+
+        var userType = hasUserType ? "Biz" : null;
+
+        var payload = _service.GetNewUserPayload(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId, userType);
+
+        var payloadJson = JsonSerializer.Serialize(payload);
+
+        if (!hasUserType)
+        {
+            Assert.Contains($"\"{_userTypeCustomField}\":null", payloadJson);
+            return;
+        }
+        
+        Assert.Contains($"\"{_userTypeCustomField}\":\"{userType}\"", payloadJson);
+    }
+
     private static bool HasPayloadPhoneNumber(object payload, bool shouldHavePhoneNumber)
     {
-        if (payload.GetType().GetProperty("users")?.GetValue(payload) is not IList<object> { Count: 1 } users) { return false; }
-        if (users[0].GetType().GetProperty("links")?.GetValue(users[0]) is not { } links) { return false; }
+        if (payload is not Dictionary<string, object> usersPayload)
+        {
+            return false;
+        }
 
-        var retValue = links.GetType().GetProperty("phonenumber")?.GetValue(links) is not null == shouldHavePhoneNumber;
+        if (usersPayload["users"] is not List<object> { Count: 1 } users)
+        {
+            return false;
+        }
         
-        return retValue;
+        if (users[0] is not Dictionary<string, object?> userPayload)
+        {
+            return false;
+        }
+
+        if (userPayload["links"] is not Dictionary<string, object?> links)
+        {
+            return false;
+        }
+        
+        return links.ContainsKey("phonenumber") == shouldHavePhoneNumber;
     }
 }

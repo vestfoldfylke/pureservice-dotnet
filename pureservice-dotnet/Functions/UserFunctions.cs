@@ -194,7 +194,7 @@ public class UserFunctions
             return;
         }
                 
-        var entraPhoneNumber = _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile");
+        var entraPhoneNumber = _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPhoneNumberAttributeName);
         var pureservicePhoneNumber = !string.IsNullOrWhiteSpace(entraPhoneNumber)
             ? await _pureservicePhoneNumberService.AddNewPhoneNumber(entraPhoneNumber, PhoneNumberType.Mobile)
             : null;
@@ -213,8 +213,10 @@ public class UserFunctions
             synchronizationResult.UserErrorCount++;
             return;
         }
+        
+        var entraUserType = _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityUserTypeAttributeName);
 
-        var pureserviceUser = await _pureserviceUserService.CreateNewUser(entraUser, pureserviceManagerUser?.Id, companyId, physicalAddressResult.Id, pureservicePhoneNumber?.Id, pureserviceEmailAddress.Id);
+        var pureserviceUser = await _pureserviceUserService.CreateNewUser(entraUser, pureserviceManagerUser?.Id, companyId, physicalAddressResult.Id, pureservicePhoneNumber?.Id, pureserviceEmailAddress.Id, entraUserType);
 
         if (pureserviceUser is null)
         {
@@ -282,7 +284,7 @@ public class UserFunctions
         
         var updateEmail = !emailAddress.Email.Equals(entraUser.Mail, StringComparison.OrdinalIgnoreCase);
         
-        var entraPhoneNumber = _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile");
+        var entraPhoneNumber = _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPhoneNumberAttributeName);
         var phoneNumberUpdate = _pureservicePhoneNumberService.NeedsPhoneNumberUpdate(phoneNumber, entraPhoneNumber);
         
         if (basicPropertiesToUpdate.Count == 0 && !usernameUpdate.Update && companyUpdate is null && departmentUpdate is null && locationUpdate is null && !updateEmail && !phoneNumberUpdate.Update)

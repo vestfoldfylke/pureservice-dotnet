@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Web;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using pureservice_dotnet.Models;
 using pureservice_dotnet.Models.Enums;
@@ -12,7 +13,9 @@ namespace pureservice_dotnet.Services;
 
 public interface IPureserviceUserService
 {
-    Task<User?> CreateNewUser(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId, int physicalAddressId, int? phoneNumberId, int emailAddressId);
+    Task<User?> CreateNewUser(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId, int physicalAddressId, int? phoneNumberId, int emailAddressId, string? userType);
+    Dictionary<string, object?> GetNewUserPayload(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId, int physicalAddressId, int? phoneNumberId, int emailAddressId,
+        string? userType);
     Task<UserList> GetUser(int userId, string[]? entities = null);
     Task<UserList> GetUsers(string[]? entities = null, int start = 0, int limit = 500, bool includeSystemUsers = false, bool includeInactiveUsers = false);
     List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))> NeedsBasicUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser = null, bool? handleStatusOnly = false);
@@ -34,17 +37,20 @@ public class PureserviceUserService : IPureserviceUserService
     private readonly IPureserviceCaller _pureserviceCaller;
     
     private const string BasePath = "user";
+    private readonly string _userTypeCustomField;
     
-    public PureserviceUserService(ILogger<PureserviceUserService> logger, IMetricsService metricsService, IPureserviceCaller pureserviceCaller)
+    public PureserviceUserService(IConfiguration configuration, ILogger<PureserviceUserService> logger, IMetricsService metricsService, IPureserviceCaller pureserviceCaller)
     {
         _logger = logger;
         _metricsService = metricsService;
         _pureserviceCaller = pureserviceCaller;
+        
+        _userTypeCustomField = configuration["User_Type_Custom_Field_Id"] ?? throw new InvalidOperationException("User_Type_Custom_Field_Id configuration value is not set");
     }
 
-    public async Task<User?> CreateNewUser(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId, int physicalAddressId, int? phoneNumberId, int emailAddressId)
+    public async Task<User?> CreateNewUser(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId, int physicalAddressId, int? phoneNumberId, int emailAddressId, string? userType)
     {
-        var payload = GetNewUserPayload(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId);
+        var payload = GetNewUserPayload(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId, userType);
         
         _logger.LogInformation("Creating new Pureservice user with ImportUniqueKey {ImportUniqueKey}", entraUser.Id);
         var result = await _pureserviceCaller.PostAsync<User>($"{BasePath}?include=company,company.departments,company.locations,emailaddress,language,phonenumbers", payload);
@@ -444,72 +450,56 @@ public class PureserviceUserService : IPureserviceUserService
         return false;
     }
 
-    private static object GetNewUserPayload(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId, int physicalAddressId, int? phoneNumberId, int emailAddressId)
+    public Dictionary<string, object?> GetNewUserPayload(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId, int physicalAddressId, int? phoneNumberId, int emailAddressId, string? userType)
     {
-        if (phoneNumberId.HasValue)
+        var userPayload = new Dictionary<string, object?>
         {
-            return new
+            ["firstName"] = entraUser.GivenName,
+            ["lastName"] = entraUser.Surname,
+            ["unavailable"] = false,
+            ["title"] = entraUser.JobTitle ?? "",
+            ["managerId"] = managerId,
+            ["companyId"] = companyId,
+            ["notes"] = "",
+            ["role"] = UserRole.Enduser,
+            ["disabled"] = entraUser.AccountEnabled == false,
+            ["isSuperuser"] = false,
+            ["importUniqueKey"] = entraUser.Id,
+            ["flushNotifications"] = true,
+            ["highlightNotifications"] = true,
+            ["notificationScheme"] = 1,
+            ["languageId"] = 2,
+            [_userTypeCustomField] = userType,
+            ["links"] = new Dictionary<string, object?>
             {
-                users = new List<object>
-                {
-                    new
-                    {
-                        firstName = entraUser.GivenName!,
-                        lastName = entraUser.Surname!,
-                        unavailable = false,
-                        title = entraUser.JobTitle ?? "",
-                        managerId,
-                        companyId,
-                        notes = "",
-                        role = UserRole.Enduser,
-                        disabled = entraUser.AccountEnabled == false,
-                        isSuperuser = false,
-                        importUniqueKey = entraUser.Id,
-                        flushNotifications = true, // NOTE: What does this mean?
-                        highlightNotifications = true, // NOTE: What does this mean?
-                        notificationScheme = 1, // NOTE: What does this mean?
-                        languageId = 2, // NOTE: Norwegian Bokmål
-                        links = new
-                        {
-                            address = new { id = physicalAddressId, type = "physicaladdress" },
-                            emailAddress = new { id = emailAddressId, type = "emailaddress" },
-                            phonenumber = new { id = phoneNumberId, type = "phonenumber" },
-                            company = new { id = companyId, type = "company" }
-                        }
-                    }
-                }
+                ["address"] = new Dictionary<string, object?> { ["id"] = physicalAddressId, ["type"] = "physicaladdress" },
+                ["emailAddress"] = new Dictionary<string, object?> { ["id"] = emailAddressId, ["type"] = "emailaddress" },
+                ["company"] = new Dictionary<string, object?> { ["id"] = companyId, ["type"] = "company" }
+            }
+        };
+
+        if (!phoneNumberId.HasValue)
+        {
+            return new Dictionary<string, object?>
+            {
+                ["users"] = new List<object> { userPayload }
             };
         }
-        
-        return new
+
+        if (userPayload["links"] is not Dictionary<string, object?> links)
         {
-            users = new List<object>
-            {
-                new
-                {
-                    firstName = entraUser.GivenName!,
-                    lastName = entraUser.Surname!,
-                    unavailable = false,
-                    title = entraUser.JobTitle ?? "",
-                    managerId,
-                    companyId,
-                    notes = "",
-                    role = UserRole.Enduser,
-                    disabled = entraUser.AccountEnabled == false,
-                    isSuperuser = false,
-                    importUniqueKey = entraUser.Id,
-                    flushNotifications = true, // NOTE: What does this mean?
-                    highlightNotifications = true, // NOTE: What does this mean?
-                    notificationScheme = 1, // NOTE: What does this mean?
-                    languageId = 2, // NOTE: Norwegian Bokmål
-                    links = new
-                    {
-                        address = new { id = physicalAddressId, type = "physicaladdress" },
-                        emailAddress = new { id = emailAddressId, type = "emailaddress" },
-                        company = new { id = companyId, type = "company" }
-                    }
-                }
-            }
+            throw new InvalidOperationException("Links dictionary is null when trying to add phone number link for new user payload");
+        }
+        
+        links.Add("phonenumber", new Dictionary<string, object?>
+        {
+            ["id"] = phoneNumberId,
+            ["type"] = "phonenumber"
+        });
+
+        return new Dictionary<string, object?>
+        {
+            ["users"] = new List<object> { userPayload }
         };
     }
 
