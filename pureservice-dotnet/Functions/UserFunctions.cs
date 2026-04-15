@@ -266,7 +266,9 @@ public class UserFunctions
         // If account is disabled in Entra and not yet in Pureservice, we want to disable it in Pureservice as well, and update ONLY the Disabled property. This is because we want to keep the user's data in Pureservice intact, but just mark them as disabled
         var shouldBeDisabled = entraUser.AccountEnabled.HasValue && !entraUser.AccountEnabled.Value && !pureserviceUser.Disabled;
         
-        var basicPropertiesToUpdate = _pureserviceUserService.NeedsBasicUpdate(pureserviceUser, entraUser, pureserviceManagerUser, shouldBeDisabled);
+        var entraUserType = _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityUserTypeAttributeName);
+        
+        var basicPropertiesToUpdate = _pureserviceUserService.NeedsBasicUpdate(pureserviceUser, entraUser, pureserviceManagerUser, shouldBeDisabled, entraUserType);
         
         if (shouldBeDisabled && basicPropertiesToUpdate.Count == 1)
         {

@@ -204,7 +204,8 @@ public class PureserviceUserServiceTests
             Links = new Links(),
             Created = DateTime.Now,
             CreatedById = 1,
-            ManagerFullName = managerFullname
+            ManagerFullName = managerFullname,
+            CustomField1 = managerId is not null ? "Baz": null
         };
 
         var entraUser = new Microsoft.Graph.Models.User
@@ -232,8 +233,10 @@ public class PureserviceUserServiceTests
                     CreatedById = 1
                 };
 
+        var entraUserType = managerId is not null ? "Baz" : null;
+
         // all properties are equal, so no update needed
-        var result = _service.NeedsBasicUpdate(pureserviceUser, entraUser, pureserviceManagerUser);
+        var result = _service.NeedsBasicUpdate(pureserviceUser, entraUser, pureserviceManagerUser, entraUserType: entraUserType);
         Assert.Empty(result);
     }
     
@@ -255,7 +258,8 @@ public class PureserviceUserServiceTests
             Links = new Links(),
             Created = DateTime.Now,
             CreatedById = 1,
-            ManagerFullName = null
+            ManagerFullName = null,
+            CustomField1 = active ? "Baz" : null
         };
 
         var entraUser = new Microsoft.Graph.Models.User
@@ -280,10 +284,12 @@ public class PureserviceUserServiceTests
             Created = DateTime.Now,
             CreatedById = 1
         };
+        
+        var entraUserType = active ? null : "Baz";
 
         // all properties needs update
-        var result = _service.NeedsBasicUpdate(pureserviceUser, entraUser, pureserviceManagerUser);
-        Assert.Equal(5, result.Count);
+        var result = _service.NeedsBasicUpdate(pureserviceUser, entraUser, pureserviceManagerUser, entraUserType: entraUserType);
+        Assert.Equal(6, result.Count);
         
         // disabled
         Assert.Equal(("disabled", (null, null, !entraUser.AccountEnabled)), result[0]);
@@ -299,6 +305,9 @@ public class PureserviceUserServiceTests
         
         // managerId
         Assert.Equal(("managerId", (null, pureserviceManagerUser.Id, null)), result[4]);
+        
+        // userType (cf_?)
+        Assert.Equal((_userTypeCustomField, (entraUserType, null, null)), result[5]);
     }
     
     // NeedsCompanyUpdate
@@ -1000,7 +1009,8 @@ public class PureserviceUserServiceTests
                 ("fullName", ("Foo Bar", null, null)),
                 ("title", ("Biz", null, null)),
                 ("managerId", (null, managerId, null)),
-                ("disabled", (null, null, true))
+                ("disabled", (null, null, true)),
+                (_userTypeCustomField, ("Baz", null, null))
             };
         
         _pureserviceCaller.PatchAsync(Arg.Is<string>($"user/{userId}"), Arg.Any<Dictionary<string, object?>>())

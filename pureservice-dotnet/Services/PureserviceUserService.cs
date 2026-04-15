@@ -18,7 +18,7 @@ public interface IPureserviceUserService
         string? userType);
     Task<UserList> GetUser(int userId, string[]? entities = null);
     Task<UserList> GetUsers(string[]? entities = null, int start = 0, int limit = 500, bool includeSystemUsers = false, bool includeInactiveUsers = false);
-    List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))> NeedsBasicUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser = null, bool? handleStatusOnly = false);
+    List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))> NeedsBasicUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser = null, bool? handleStatusOnly = false, string? entraUserType = null);
     CompanyUpdateItem? NeedsCompanyUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies);
     CompanyUpdateItem? NeedsDepartmentUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies, List<CompanyDepartment> companyDepartments);
     CompanyUpdateItem? NeedsLocationUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies, List<CompanyLocation> companyLocations);
@@ -199,7 +199,7 @@ public class PureserviceUserService : IPureserviceUserService
         return userList;
     }
 
-    public List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))> NeedsBasicUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser = null, bool? handleStatusOnly = false)
+    public List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))> NeedsBasicUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser = null, bool? handleStatusOnly = false, string? entraUserType = null)
     {
         List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))> propertiesToUpdate = [];
         
@@ -231,6 +231,12 @@ public class PureserviceUserService : IPureserviceUserService
         if (pureserviceUser.ManagerId != pureserviceManagerUser?.Id)
         {
             propertiesToUpdate.Add(("managerId", (null, pureserviceManagerUser?.Id, null)));
+        }
+
+        var currentUserType = GetCustomFieldValueFromPureserviceUser<string>(pureserviceUser, _userTypeCustomField);
+        if (currentUserType != entraUserType)
+        {
+            propertiesToUpdate.Add((_userTypeCustomField, (entraUserType, null, null)));
         }
         
         return propertiesToUpdate;
@@ -674,5 +680,20 @@ public class PureserviceUserService : IPureserviceUserService
             entraUser.OfficeLocation, company.Id, pureserviceUser.Id);
         
         return (true, wantedLocation, entraUser.OfficeLocation);
+    }
+
+    private static T? GetCustomFieldValueFromPureserviceUser<T>(User pureserviceUser, string customFieldName)
+    {
+        if (typeof(T) != typeof(string) && typeof(T) != typeof(int) && typeof(T) != typeof(DateTime))
+        {
+            throw new ArgumentException($"Type {typeof(T)} is not supported. Only string, int and DateTime are supported.", nameof(T));
+        }
+
+        var property = typeof(User).GetProperties()
+            .FirstOrDefault(p => p.GetCustomAttributes(typeof(System.Text.Json.Serialization.JsonPropertyNameAttribute), false)
+                .Cast<System.Text.Json.Serialization.JsonPropertyNameAttribute>()
+                .Any(attr => attr.Name == customFieldName));
+
+        return (T?)property?.GetValue(pureserviceUser);
     }
 }
