@@ -194,7 +194,7 @@ public class UserFunctions
             return;
         }
                 
-        var entraPhoneNumber = _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile");
+        var entraPhoneNumber = _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPhoneNumberAttributeName);
         var pureservicePhoneNumber = !string.IsNullOrWhiteSpace(entraPhoneNumber)
             ? await _pureservicePhoneNumberService.AddNewPhoneNumber(entraPhoneNumber, PhoneNumberType.Mobile)
             : null;
@@ -213,8 +213,10 @@ public class UserFunctions
             synchronizationResult.UserErrorCount++;
             return;
         }
+        
+        var entraUserType = _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityUserTypeAttributeName);
 
-        var pureserviceUser = await _pureserviceUserService.CreateNewUser(entraUser, pureserviceManagerUser?.Id, companyId, physicalAddressResult.Id, pureservicePhoneNumber?.Id, pureserviceEmailAddress.Id);
+        var pureserviceUser = await _pureserviceUserService.CreateNewUser(entraUser, pureserviceManagerUser?.Id, companyId, physicalAddressResult.Id, pureservicePhoneNumber?.Id, pureserviceEmailAddress.Id, entraUserType);
 
         if (pureserviceUser is null)
         {
@@ -264,7 +266,9 @@ public class UserFunctions
         // If account is disabled in Entra and not yet in Pureservice, we want to disable it in Pureservice as well, and update ONLY the Disabled property. This is because we want to keep the user's data in Pureservice intact, but just mark them as disabled
         var shouldBeDisabled = entraUser.AccountEnabled.HasValue && !entraUser.AccountEnabled.Value && !pureserviceUser.Disabled;
         
-        var basicPropertiesToUpdate = _pureserviceUserService.NeedsBasicUpdate(pureserviceUser, entraUser, pureserviceManagerUser, shouldBeDisabled);
+        var entraUserType = _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityUserTypeAttributeName);
+        
+        var basicPropertiesToUpdate = _pureserviceUserService.NeedsBasicUpdate(pureserviceUser, entraUser, pureserviceManagerUser, shouldBeDisabled, entraUserType);
         
         if (shouldBeDisabled && basicPropertiesToUpdate.Count == 1)
         {
@@ -282,7 +286,7 @@ public class UserFunctions
         
         var updateEmail = !emailAddress.Email.Equals(entraUser.Mail, StringComparison.OrdinalIgnoreCase);
         
-        var entraPhoneNumber = _graphService.GetCustomSecurityAttribute(entraUser, "IDM", "Mobile");
+        var entraPhoneNumber = _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPhoneNumberAttributeName);
         var phoneNumberUpdate = _pureservicePhoneNumberService.NeedsPhoneNumberUpdate(phoneNumber, entraPhoneNumber);
         
         if (basicPropertiesToUpdate.Count == 0 && !usernameUpdate.Update && companyUpdate is null && departmentUpdate is null && locationUpdate is null && !updateEmail && !phoneNumberUpdate.Update)

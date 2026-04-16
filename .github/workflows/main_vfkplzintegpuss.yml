@@ -9,48 +9,12 @@ on:
     branches: [main]
   workflow_dispatch:
 
-env:
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: 'pureservice-dotnet' # set this to the path to your web app project, defaults to the repository root
-  DOTNET_VERSION: '9.0.x' # set this to the dotnet version to use
-
 jobs:
-  build-and-deploy:
-    runs-on: self-hosted
-    permissions:
-      id-token: write #This is required for requesting the JWT
-      contents: read #This is required for actions/checkout
-
-    steps:
-      - name: 'Checkout GitHub Action'
-        uses: actions/checkout@v4
-
-      - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
-        uses: actions/setup-dotnet@v1
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: 'Test Project'
-        run: dotnet test --configuration Release
-
-      - name: 'Resolve Project Dependencies Using Dotnet'
-        shell: bash
-        run: |
-          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-          dotnet build --configuration Release --output ./output
-          popd
-      
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZUREAPPSERVICE_CLIENTID_5956EBC229B7404FB4497079CDE7F6C6 }}
-          tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_0396839B196F4B7EA6225017274940D6 }}
-          subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_A07B2A42EB8A4CDE97ED51D3C8FDC6A4 }}
-
-      - name: 'Run Azure Functions Action'
-        uses: Azure/functions-action@v1
-        id: fa
-        with:
-          app-name: 'vfkplzintegpuss'
-          slot-name: 'Production'
-          package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output'
-          
+  deploy-az-app-service-dotnet:
+    uses: vestfoldfylke/shared/.github/workflows/deploy-az-app-service-dotnet.yml@main
+    with:
+      azure_appname: "vfkplzintegpuss" # required
+      azure_functionapp_package_path: "pureservice-dotnet" # required. set to path project path. if multiple projects exists in same solution, set this to the project to deploy
+      dotnet_version: "9.0.x" # required and must follow the TargetFramework version set in the project file (*.csproj)
+    secrets:
+      azure_publishprofile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_PROD }}

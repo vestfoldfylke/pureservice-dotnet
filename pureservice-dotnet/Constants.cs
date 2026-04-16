@@ -6,4 +6,8 @@ public static class Constants
     public static string MetricsResultLabelName => "Result";
     public static string MetricsResultSuccessLabelValue => "Success";
     public static string MetricsResultFailedLabelValue => "Failed";
+
+    public static string CustomSecurityAttributeGroup => "IDM";
+    public static string CustomSecurityPhoneNumberAttributeName => "Mobile";
+    public static string CustomSecurityUserTypeAttributeName => "Brukertype";
 }
