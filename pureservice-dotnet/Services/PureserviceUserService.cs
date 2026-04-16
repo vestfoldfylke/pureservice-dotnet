@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using System.Web;
 using Microsoft.Extensions.Configuration;
@@ -233,7 +234,7 @@ public class PureserviceUserService : IPureserviceUserService
             propertiesToUpdate.Add(("managerId", (null, pureserviceManagerUser?.Id, null)));
         }
 
-        var currentUserType = GetCustomFieldValueFromPureserviceUser<string>(pureserviceUser, _userTypeCustomField);
+        var currentUserType = GetCustomFieldValueFromPureserviceUser<string?>(pureserviceUser, _userTypeCustomField) as string;
         if (currentUserType != entraUserType)
         {
             propertiesToUpdate.Add((_userTypeCustomField, (entraUserType, null, null)));
@@ -682,7 +683,7 @@ public class PureserviceUserService : IPureserviceUserService
         return (true, wantedLocation, entraUser.OfficeLocation);
     }
 
-    private static T? GetCustomFieldValueFromPureserviceUser<T>(User pureserviceUser, string customFieldName)
+    private static object? GetCustomFieldValueFromPureserviceUser<T>(User pureserviceUser, string customFieldName)
     {
         if (typeof(T) != typeof(string) && typeof(T) != typeof(int) && typeof(T) != typeof(DateTime))
         {
@@ -694,6 +695,21 @@ public class PureserviceUserService : IPureserviceUserService
                 .Cast<System.Text.Json.Serialization.JsonPropertyNameAttribute>()
                 .Any(attr => attr.Name == customFieldName));
 
-        return (T?)property?.GetValue(pureserviceUser);
+        if (property is null)
+        {
+            throw new InvalidOperationException($"Could not find property with JsonPropertyNameAttribute with name {customFieldName} on User class");
+        }
+
+        var propertyValue = property.GetValue(pureserviceUser);
+
+        return propertyValue switch
+        {
+            null => null,
+            JsonElement element when typeof(T) == typeof(string) => element.GetString(),
+            JsonElement element when typeof(T) == typeof(int) => element.GetInt32(),
+            JsonElement element when typeof(T) == typeof(DateTime) => element.GetDateTime(),
+            JsonElement => throw new ArgumentException($"Type {typeof(T)} is not supported. Only string, int and DateTime are supported.", nameof(T)),
+            _ => (T?)propertyValue
+        };
     }
 }
