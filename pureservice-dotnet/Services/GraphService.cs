@@ -75,15 +75,15 @@ public class GraphService : IGraphService
     {
         List<User> allUsers = [];
         
-        var allEmployees = await GetUsersPage(
+        var allStudents = await GetUsersPage(
             $"https://graph.microsoft.com/v1.0/users?$filter=endsWith(userPrincipalName, '{_studentUserDomain}') AND jobTitle in ('{string.Join("', '", _studentJobTitles)}')&$count=true&$select={string.Join(",", _userProperties)}&$top=999");
 
-        allUsers.AddRange(allEmployees.Value ?? []);
+        allUsers.AddRange(allStudents.Value ?? []);
         
-        while (allEmployees.OdataNextLink is not null)
+        while (allStudents.OdataNextLink is not null)
         {
-            allEmployees = await GetUsersPage(allEmployees.OdataNextLink);
-            allUsers.AddRange(allEmployees.Value ?? []);
+            allStudents = await GetUsersPage(allStudents.OdataNextLink);
+            allUsers.AddRange(allStudents.Value ?? []);
         }
 
         return allUsers;
