@@ -6,7 +6,7 @@
         <OutputType>Exe</OutputType>
         <Nullable>enable</Nullable>
         <RootNamespace>pureservice_dotnet</RootNamespace>
-        <Version>1.2.1</Version>
+        <Version>1.3.0</Version>
 
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
 
