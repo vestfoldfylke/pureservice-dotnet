@@ -4,7 +4,7 @@ using pureservice_dotnet.Models.Enums;
 
 namespace pureservice_dotnet.Models;
 
-public class User
+public class User : PureserviceBase
 {
     public required string FirstName { get; init; }
     public required string LastName { get; init; }
@@ -16,7 +16,6 @@ public class User
     public string? Notes { get; init; }
     public bool IsAnonymized { get; init; }
     public bool IsSuperuser { get; init; }
-    public Links? Links { get; init; }
     public Company? Company { get; init; }
     public int? ManagerId { get; init; }
     public int? CompanyId { get; init; }
@@ -39,11 +38,6 @@ public class User
     public DateTime? UnavailableChangedByDate { get; init; }
     public bool Disabled { get; init; }
     public string? ImportUniqueKey { get; init; }
-    public int Id { get; init; }
-    public DateTime Created { get; init; }
-    public DateTime? Modified { get; init; }
-    public int CreatedById { get; init; }
-    public int? ModifiedById { get; init; }
     public string? ManagerFullName { get; init; }
     
     /// <summary>
