@@ -174,10 +174,34 @@ public class UserFunctions
             
             await Task.Delay(secondsToWait.Value * 1000);
         }
-        
+
         synchronizationResult.UserHandledCount++;
+
+        var emailAddressExists = await _pureserviceEmailAddressService.EmailAddressExists(entraUser.UserPrincipalName!);
+        if (emailAddressExists is null)
+        {
+            _logger.LogError("Failed in checking email address existence for new Pureservice user with EntraId {EntraId} and Email {Email}. User will not be created", entraUser.Id, entraUser.Mail);
+            synchronizationResult.UserEmailAddressCheckFailedCount++;
+            return;
+        }
+
+        if (emailAddressExists.Value)
+        {
+            _logger.LogError("Email address already exists for new Pureservice user with EntraId {EntraId} and Email {Email}. User can not be created", entraUser.Id, entraUser.Mail);
+            synchronizationResult.UserEmailAddressAlreadyExistsCount++;
+            return;
+        }
         
         _logger.LogWarning("Entra user with Id {EntraId} not found in Pureservice by ImportUniqueKey. User will be created", entraUser.Id);
+        
+        // NOTE: We create the user with UserPrincipalName as email address so SSO will work. If Mail actually is different, it will be updated at next sweep.
+        var pureserviceEmailAddress = await _pureserviceEmailAddressService.AddNewEmailAddress(entraUser.UserPrincipalName!);
+        if (pureserviceEmailAddress is null)
+        {
+            _logger.LogError("Failed to create email address for new Pureservice user with EntraId {EntraId} and Email {Email}. User will not be created", entraUser.Id, entraUser.Mail);
+            synchronizationResult.UserErrorCount++;
+            return;
+        }
 
         if (entraUser.Manager?.Id is not null && pureserviceManagerUser is null)
         {
@@ -193,7 +217,7 @@ public class UserFunctions
             synchronizationResult.UserErrorCount++;
             return;
         }
-                
+
         var entraPhoneNumber = _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPhoneNumberAttributeName);
         var pureservicePhoneNumber = !string.IsNullOrWhiteSpace(entraPhoneNumber)
             ? await _pureservicePhoneNumberService.AddNewPhoneNumber(entraPhoneNumber, PhoneNumberType.Mobile)
@@ -201,15 +225,6 @@ public class UserFunctions
         if (pureservicePhoneNumber is null && !string.IsNullOrWhiteSpace(entraPhoneNumber))
         {
             _logger.LogError("Failed to create phone number for new Pureservice user with EntraId {EntraId} and PhoneNumber {PhoneNumber}. User will not be created", entraUser.Id, entraPhoneNumber);
-            synchronizationResult.UserErrorCount++;
-            return;
-        }
-
-        // NOTE: We create the user with UserPrincipalName as email address so SSO will work. If Mail actually is different, it will be updated at next sweep.
-        var pureserviceEmailAddress = await _pureserviceEmailAddressService.AddNewEmailAddress(entraUser.UserPrincipalName!);
-        if (pureserviceEmailAddress is null)
-        {
-            _logger.LogError("Failed to create email address for new Pureservice user with EntraId {EntraId} and Email {Email}. User will not be created", entraUser.Id, entraUser.Mail);
             synchronizationResult.UserErrorCount++;
             return;
         }

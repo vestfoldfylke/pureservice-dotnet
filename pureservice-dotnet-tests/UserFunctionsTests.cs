@@ -72,10 +72,11 @@ public class UserFunctionsTests
         await _companyService.DidNotReceive().GetLocations();
         await _companyService.DidNotReceive().AddCompany(Arg.Any<string>());
         _pureserviceCaller.DidNotReceive().NeedsToWait(Arg.Any<int>());
+        await _emailAddressService.DidNotReceive().EmailAddressExists(Arg.Any<string>());
+        await _emailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());
         await _physicalAddressService.DidNotReceive().AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
         _graphService.DidNotReceive().GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<string>(), Arg.Any<string>());
         await _phoneNumberService.DidNotReceive().AddNewPhoneNumber(Arg.Any<string>(), Arg.Any<PhoneNumberType>());
-        await _emailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());
         await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
         await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
         
@@ -119,10 +120,11 @@ public class UserFunctionsTests
         await _companyService.DidNotReceive().GetLocations();
         await _companyService.DidNotReceive().AddCompany(Arg.Any<string>());
         _pureserviceCaller.DidNotReceive().NeedsToWait(Arg.Any<int>());
+        await _emailAddressService.DidNotReceive().EmailAddressExists(Arg.Any<string>());
+        await _emailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());
         await _physicalAddressService.DidNotReceive().AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
         _graphService.DidNotReceive().GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<string>(), Arg.Any<string>());
         await _phoneNumberService.DidNotReceive().AddNewPhoneNumber(Arg.Any<string>(), Arg.Any<PhoneNumberType>());
-        await _emailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());
         await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
         await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
         
@@ -227,10 +229,11 @@ public class UserFunctionsTests
         
         await _companyService.DidNotReceive().AddCompany(Arg.Any<string>());
         _pureserviceCaller.DidNotReceive().NeedsToWait(Arg.Any<int>());
+        await _emailAddressService.DidNotReceive().EmailAddressExists(Arg.Any<string>());
+        await _emailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());
         await _physicalAddressService.DidNotReceive().AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>());
         _graphService.DidNotReceive().GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<string>(), Arg.Any<string>());
         await _phoneNumberService.DidNotReceive().AddNewPhoneNumber(Arg.Any<string>(), Arg.Any<PhoneNumberType>());
-        await _emailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());
         await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
         await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
         
@@ -316,15 +319,9 @@ public class UserFunctionsTests
 
         var pureserviceLinked = new Linked
         {
-            Credentials = new List<Credential>
-            {
-                credential
-            },
-            EmailAddresses = new List<EmailAddress>
-            {
-                emailAddress
-            },
-            PhoneNumbers = new List<PhoneNumber>()
+            Credentials = [credential],
+            EmailAddresses = [emailAddress],
+            PhoneNumbers = []
         };
         
         var basicPropertiesToUpdate = new List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))>
@@ -475,6 +472,8 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressCheckFailedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
@@ -618,6 +617,8 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressCheckFailedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
@@ -763,6 +764,8 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressCheckFailedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
@@ -996,6 +999,8 @@ public class UserFunctionsTests
         Assert.Equal(1, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressCheckFailedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(1, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
@@ -1243,6 +1248,8 @@ public class UserFunctionsTests
         Assert.Equal(1, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressCheckFailedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(1, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
@@ -1496,6 +1503,8 @@ public class UserFunctionsTests
         Assert.Equal(1, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressCheckFailedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(1, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
@@ -1740,6 +1749,8 @@ public class UserFunctionsTests
         Assert.Equal(1, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressCheckFailedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(1, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
@@ -1865,6 +1876,8 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressCheckFailedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
@@ -2020,6 +2033,8 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressCheckFailedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
@@ -2122,7 +2137,7 @@ public class UserFunctionsTests
     }
     
     [Fact]
-    public async Task CreateUser_Should_Not_Do_Anything_When_PhysicalAddress_Is_Not_Created()
+    public async Task CreateUser_Should_Not_Do_Anything_When_EmailAddress_Failed_To_Check_Existence()
     {
         const string firstName = "Ragnvald";
         const string lastName = "Rumpelo";
@@ -2168,7 +2183,7 @@ public class UserFunctionsTests
         var synchronizationResult = new SynchronizationResult();
 
         _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((false, 0, null));
-        _physicalAddressService.AddNewPhysicalAddress(null, null, null, "Norway").ReturnsNull();
+        _emailAddressService.EmailAddressExists(email).ReturnsNull();
         
         var exception = await Record.ExceptionAsync(async () => await _service.CreateUser(entraUser, null, companyId, department, location, synchronizationResult));
         Assert.Null(exception);
@@ -2185,15 +2200,271 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
-        Assert.Equal(1, synchronizationResult.UserErrorCount);
+        Assert.Equal(1, synchronizationResult.UserEmailAddressCheckFailedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
+        Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
-        await _physicalAddressService.Received(1).AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Is("Norway"));
+        _pureserviceCaller.Received(1).NeedsToWait(Arg.Any<int>());
+        await _emailAddressService.Received(1).EmailAddressExists(Arg.Any<string>());
         
+        await _emailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());
+        await _physicalAddressService.DidNotReceive().AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Is("Norway"));
         _graphService.DidNotReceive().GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<string>(), Arg.Any<string>());
         await _phoneNumberService.DidNotReceive().AddNewPhoneNumber(Arg.Any<string>(), Arg.Any<PhoneNumberType>());
+        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
+        await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+    }
+    
+    [Fact]
+    public async Task CreateUser_Should_Not_Do_Anything_When_EmailAddress_Already_Exists()
+    {
+        const string firstName = "Ragnvald";
+        const string lastName = "Rumpelo";
+        const string title = "Supperådgiver";
+        const string email = "ragnvald.rumpelo@foo.biz";
+
+        const int companyId = 2;
+        const int departmentId = 3;
+        const string departmentName = "Bar";
+        const int locationId = 4;
+        const string locationName = "Biz";
+        
+        var entraUser = new Microsoft.Graph.Models.User
+        {
+            GivenName = firstName,
+            Surname = lastName,
+            JobTitle = title,
+            CompanyName = "Foo",
+            Department = "Bar",
+            OfficeLocation = "Biz",
+            Mail = email,
+            AccountEnabled = true,
+            Id = "rr-42",
+            UserPrincipalName = email
+        };
+        
+        var department = new CompanyDepartment
+        {
+            Name = departmentName,
+            Id = departmentId,
+            Created = DateTime.Now.AddDays(-10),
+            CreatedById = 1
+        };
+        
+        var location = new CompanyLocation
+        {
+            Name = locationName,
+            Id = locationId,
+            Created = DateTime.Now.AddDays(-10),
+            CreatedById = 1
+        };
+        
+        var synchronizationResult = new SynchronizationResult();
+
+        _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((false, 0, null));
+        _emailAddressService.EmailAddressExists(email).Returns(true);
+        
+        var exception = await Record.ExceptionAsync(async () => await _service.CreateUser(entraUser, null, companyId, department, location, synchronizationResult));
+        Assert.Null(exception);
+        
+        Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCredentialsCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
+        Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
+        Assert.Equal(1, synchronizationResult.UserHandledCount);
+        Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressCheckFailedCount);
+        Assert.Equal(1, synchronizationResult.UserEmailAddressAlreadyExistsCount);
+        Assert.Equal(0, synchronizationResult.UserErrorCount);
+        Assert.Equal(0, synchronizationResult.UserCreatedCount);
+        Assert.Equal(0, synchronizationResult.UserCreatedCount);
+        
+        _pureserviceCaller.Received(1).NeedsToWait(Arg.Any<int>());
+        await _emailAddressService.Received(1).EmailAddressExists(Arg.Any<string>());
+        
         await _emailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());
+        await _physicalAddressService.DidNotReceive().AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Is("Norway"));
+        _graphService.DidNotReceive().GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<string>(), Arg.Any<string>());
+        await _phoneNumberService.DidNotReceive().AddNewPhoneNumber(Arg.Any<string>(), Arg.Any<PhoneNumberType>());
+        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
+        await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+    }
+    
+    [Fact]
+    public async Task CreateUser_Should_Not_Do_Anything_When_EmailAddress_Is_Not_Created()
+    {
+        const string firstName = "Ragnvald";
+        const string lastName = "Rumpelo";
+        const string title = "Supperådgiver";
+        const string email = "ragnvald.rumpelo@foo.biz";
+        const string mobile = "+4781549300";
+
+        const int companyId = 2;
+        const int departmentId = 3;
+        const string departmentName = "Bar";
+        const int locationId = 4;
+        const string locationName = "Biz";
+        
+        var entraUser = new Microsoft.Graph.Models.User
+        {
+            GivenName = firstName,
+            Surname = lastName,
+            JobTitle = title,
+            CompanyName = "Foo",
+            Department = "Bar",
+            OfficeLocation = "Biz",
+            Mail = email,
+            AccountEnabled = true,
+            Id = "rr-42",
+            UserPrincipalName = email
+        };
+        
+        var department = new CompanyDepartment
+        {
+            Name = departmentName,
+            Id = departmentId,
+            Created = DateTime.Now.AddDays(-10),
+            CreatedById = 1
+        };
+        
+        var location = new CompanyLocation
+        {
+            Name = locationName,
+            Id = locationId,
+            Created = DateTime.Now.AddDays(-10),
+            CreatedById = 1
+        };
+        
+        var synchronizationResult = new SynchronizationResult();
+
+        _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((false, 0, null));
+        _emailAddressService.EmailAddressExists(email).Returns(false);
+        _emailAddressService.AddNewEmailAddress(email).ReturnsNull();
+        
+        var exception = await Record.ExceptionAsync(async () => await _service.CreateUser(entraUser, null, companyId, department, location, synchronizationResult));
+        Assert.Null(exception);
+        
+        Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCredentialsCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
+        Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
+        Assert.Equal(1, synchronizationResult.UserHandledCount);
+        Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressCheckFailedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(1, synchronizationResult.UserErrorCount);
+        Assert.Equal(0, synchronizationResult.UserCreatedCount);
+        
+        await _emailAddressService.Received(1).EmailAddressExists(Arg.Any<string>());
+        await _emailAddressService.Received(1).AddNewEmailAddress(Arg.Is(entraUser.UserPrincipalName));
+
+        await _physicalAddressService.DidNotReceive().AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Is("Norway"));
+        _graphService.DidNotReceive().GetCustomSecurityAttribute(Arg.Is(entraUser), Arg.Is(Constants.CustomSecurityAttributeGroup), Arg.Is(Constants.CustomSecurityPhoneNumberAttributeName));
+        await _phoneNumberService.DidNotReceive().AddNewPhoneNumber(Arg.Is(mobile), Arg.Is(PhoneNumberType.Mobile));
+        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
+        await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
+    }
+    
+    [Fact]
+    public async Task CreateUser_Should_Not_Do_Anything_When_PhysicalAddress_Is_Not_Created_When_Its_Expected_To_Get_Created()
+    {
+        const string firstName = "Ragnvald";
+        const string lastName = "Rumpelo";
+        const string title = "Supperådgiver";
+        const string email = "ragnvald.rumpelo@foo.biz";
+        const string mobile = "+4781549300";
+
+        const int companyId = 2;
+        const int departmentId = 3;
+        const string departmentName = "Bar";
+        const int locationId = 4;
+        const string locationName = "Biz";
+        
+        var entraUser = new Microsoft.Graph.Models.User
+        {
+            GivenName = firstName,
+            Surname = lastName,
+            JobTitle = title,
+            CompanyName = "Foo",
+            Department = "Bar",
+            OfficeLocation = "Biz",
+            Mail = email,
+            AccountEnabled = true,
+            Id = "rr-42",
+            UserPrincipalName = email
+        };
+        
+        var department = new CompanyDepartment
+        {
+            Name = departmentName,
+            Id = departmentId,
+            Created = DateTime.Now.AddDays(-10),
+            CreatedById = 1
+        };
+        
+        var location = new CompanyLocation
+        {
+            Name = locationName,
+            Id = locationId,
+            Created = DateTime.Now.AddDays(-10),
+            CreatedById = 1
+        };
+
+        var newEmailAddress = new EmailAddress
+        {
+            Email = email,
+            Id = 12,
+            Created = DateTime.Now,
+            CreatedById = 42
+        };
+        
+        var synchronizationResult = new SynchronizationResult();
+
+        _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((false, 0, null));
+        _emailAddressService.EmailAddressExists(email).Returns(false);
+        _emailAddressService.AddNewEmailAddress(email).Returns(newEmailAddress);
+        _physicalAddressService.AddNewPhysicalAddress(null, null, null, "Norway").ReturnsNull();
+        
+        var exception = await Record.ExceptionAsync(async () => await _service.CreateUser(entraUser, null, companyId, department, location, synchronizationResult));
+        Assert.Null(exception);
+        
+        Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCredentialsCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledCount);
+        Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
+        Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
+        Assert.Equal(1, synchronizationResult.UserHandledCount);
+        Assert.Equal(0, synchronizationResult.UserUpToDateCount);
+        Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressCheckFailedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(1, synchronizationResult.UserErrorCount);
+        Assert.Equal(0, synchronizationResult.UserCreatedCount);
+        
+        await _emailAddressService.Received(1).EmailAddressExists(Arg.Any<string>());
+        await _emailAddressService.Received(1).AddNewEmailAddress(Arg.Is(entraUser.UserPrincipalName));
+        await _physicalAddressService.Received(1).AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Is("Norway"));
+        
+        _graphService.DidNotReceive().GetCustomSecurityAttribute(Arg.Is(entraUser), Arg.Is(Constants.CustomSecurityAttributeGroup), Arg.Is(Constants.CustomSecurityPhoneNumberAttributeName));
+        await _phoneNumberService.DidNotReceive().AddNewPhoneNumber(Arg.Is(mobile), Arg.Is(PhoneNumberType.Mobile));
         await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
         await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
     }
@@ -2243,11 +2514,20 @@ public class UserFunctionsTests
             CreatedById = 1
         };
 
+        var newEmailAddress = new EmailAddress
+        {
+            Email = email,
+            Id = 12,
+            Created = DateTime.Now,
+            CreatedById = 42
+        };
         var newPhysicalAddress = new PhysicalAddress(null, null, null, "Norway", 10, DateTime.Now, null, null, 42, null);
         
         var synchronizationResult = new SynchronizationResult();
 
         _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((false, 0, null));
+        _emailAddressService.EmailAddressExists(email).Returns(false);
+        _emailAddressService.AddNewEmailAddress(email).Returns(newEmailAddress);
         _physicalAddressService.AddNewPhysicalAddress(null, null, null, "Norway").Returns(newPhysicalAddress);
         _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPhoneNumberAttributeName).Returns(mobile);
         _phoneNumberService.AddNewPhoneNumber(mobile, PhoneNumberType.Mobile).ReturnsNull();
@@ -2265,97 +2545,18 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressCheckFailedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
-        await _physicalAddressService.Received(1).AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Is("Norway"));
-        _graphService.Received(1).GetCustomSecurityAttribute(Arg.Is(entraUser), Arg.Is(Constants.CustomSecurityAttributeGroup), Arg.Is(Constants.CustomSecurityPhoneNumberAttributeName));
-        await _phoneNumberService.Received(1).AddNewPhoneNumber(Arg.Is(mobile), Arg.Is(PhoneNumberType.Mobile));
-        
-        await _emailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());
-        await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
-        await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
-    }
-    
-    [Fact]
-    public async Task CreateUser_Should_Not_Do_Anything_When_EmailAddress_Is_Not_Created()
-    {
-        const string firstName = "Ragnvald";
-        const string lastName = "Rumpelo";
-        const string title = "Supperådgiver";
-        const string email = "ragnvald.rumpelo@foo.biz";
-        const string mobile = "+4781549300";
-
-        const int companyId = 2;
-        const int departmentId = 3;
-        const string departmentName = "Bar";
-        const int locationId = 4;
-        const string locationName = "Biz";
-        
-        var entraUser = new Microsoft.Graph.Models.User
-        {
-            GivenName = firstName,
-            Surname = lastName,
-            JobTitle = title,
-            CompanyName = "Foo",
-            Department = "Bar",
-            OfficeLocation = "Biz",
-            Mail = email,
-            AccountEnabled = true,
-            Id = "rr-42",
-            UserPrincipalName = email
-        };
-        
-        var department = new CompanyDepartment
-        {
-            Name = departmentName,
-            Id = departmentId,
-            Created = DateTime.Now.AddDays(-10),
-            CreatedById = 1
-        };
-        
-        var location = new CompanyLocation
-        {
-            Name = locationName,
-            Id = locationId,
-            Created = DateTime.Now.AddDays(-10),
-            CreatedById = 1
-        };
-
-        var newPhysicalAddress = new PhysicalAddress(null, null, null, "Norway", 10, DateTime.Now, null, null, 42, null);
-        var newPhoneNumber = new PhoneNumber(mobile, mobile, PhoneNumberType.Mobile, null, 11, DateTime.Now, null, 42, null);
-        
-        var synchronizationResult = new SynchronizationResult();
-
-        _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((false, 0, null));
-        _physicalAddressService.AddNewPhysicalAddress(null, null, null, "Norway").Returns(newPhysicalAddress);
-        _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPhoneNumberAttributeName).Returns(mobile);
-        _phoneNumberService.AddNewPhoneNumber(mobile, PhoneNumberType.Mobile).Returns(newPhoneNumber);
-        
-        var exception = await Record.ExceptionAsync(async () => await _service.CreateUser(entraUser, null, companyId, department, location, synchronizationResult));
-        Assert.Null(exception);
-        
-        Assert.Equal(0, synchronizationResult.CompanyMissingInPureserviceCount);
-        Assert.Equal(0, synchronizationResult.UserMissingCredentialsCount);
-        Assert.Equal(0, synchronizationResult.UserDisabledCount);
-        Assert.Equal(0, synchronizationResult.UserMissingCompanyNameCount);
-        Assert.Equal(0, synchronizationResult.UserMissingEmailAddressCount);
-        Assert.Equal(1, synchronizationResult.UserHandledCount);
-        Assert.Equal(0, synchronizationResult.UserUpToDateCount);
-        Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
-        Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
-        Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
-        Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
-        Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
-        Assert.Equal(1, synchronizationResult.UserErrorCount);
-        Assert.Equal(0, synchronizationResult.UserCreatedCount);
-        
-        await _physicalAddressService.Received(1).AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Is("Norway"));
-        _graphService.Received(1).GetCustomSecurityAttribute(Arg.Is(entraUser), Arg.Is(Constants.CustomSecurityAttributeGroup), Arg.Is(Constants.CustomSecurityPhoneNumberAttributeName));
-        await _phoneNumberService.Received(1).AddNewPhoneNumber(Arg.Is(mobile), Arg.Is(PhoneNumberType.Mobile));
+        await _emailAddressService.Received(1).EmailAddressExists(Arg.Any<string>());
         await _emailAddressService.Received(1).AddNewEmailAddress(Arg.Is(entraUser.UserPrincipalName));
+        await _physicalAddressService.Received(1).AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Is("Norway"));
+        _graphService.Received(1).GetCustomSecurityAttribute(Arg.Is(entraUser), Arg.Is(Constants.CustomSecurityAttributeGroup), Arg.Is(Constants.CustomSecurityPhoneNumberAttributeName));
+        await _phoneNumberService.Received(1).AddNewPhoneNumber(Arg.Is(mobile), Arg.Is(PhoneNumberType.Mobile));
         
         await _pureserviceUserService.DidNotReceive().CreateNewUser(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
         await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
@@ -2419,10 +2620,11 @@ public class UserFunctionsTests
         var synchronizationResult = new SynchronizationResult();
 
         _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((false, 0, null));
+        _emailAddressService.EmailAddressExists(email).Returns(false);
+        _emailAddressService.AddNewEmailAddress(entraUser.UserPrincipalName).Returns(newEmailAddress);
         _physicalAddressService.AddNewPhysicalAddress(null, null, null, "Norway").Returns(newPhysicalAddress);
         _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPhoneNumberAttributeName).Returns(mobile);
         _phoneNumberService.AddNewPhoneNumber(mobile, PhoneNumberType.Mobile).Returns(newPhoneNumber);
-        _emailAddressService.AddNewEmailAddress(entraUser.UserPrincipalName).Returns(newEmailAddress);
         
         var exception = await Record.ExceptionAsync(async () => await _service.CreateUser(entraUser, null, companyId, department, location, synchronizationResult));
         Assert.Null(exception);
@@ -2437,15 +2639,18 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressCheckFailedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
+        await _emailAddressService.Received(1).EmailAddressExists(Arg.Any<string>());
+        await _emailAddressService.Received(1).AddNewEmailAddress(Arg.Is(entraUser.UserPrincipalName));
         await _physicalAddressService.Received(1).AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Is("Norway"));
         _graphService.Received(1).GetCustomSecurityAttribute(Arg.Is(entraUser), Arg.Is(Constants.CustomSecurityAttributeGroup), Arg.Is(Constants.CustomSecurityPhoneNumberAttributeName));
         await _phoneNumberService.Received(1).AddNewPhoneNumber(Arg.Is(mobile), Arg.Is(PhoneNumberType.Mobile));
-        await _emailAddressService.Received(1).AddNewEmailAddress(Arg.Is(entraUser.UserPrincipalName));
         await _pureserviceUserService.Received(1).CreateNewUser(Arg.Is(entraUser), Arg.Any<int?>(), Arg.Is(companyId), Arg.Is(newPhysicalAddress.Id), Arg.Is(newPhoneNumber.Id), Arg.Is(newEmailAddress.Id), Arg.Any<string>());
         
         await _pureserviceUserService.DidNotReceive().UpdateDepartmentAndLocation(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<int>());
@@ -2534,10 +2739,11 @@ public class UserFunctionsTests
         var synchronizationResult = new SynchronizationResult();
 
         _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((false, 0, null));
+        _emailAddressService.EmailAddressExists(email).Returns(false);
+        _emailAddressService.AddNewEmailAddress(entraUser.UserPrincipalName).Returns(newEmailAddress);
         _physicalAddressService.AddNewPhysicalAddress(null, null, null, "Norway").Returns(newPhysicalAddress);
         _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPhoneNumberAttributeName).Returns(mobile);
         _phoneNumberService.AddNewPhoneNumber(mobile, PhoneNumberType.Mobile).Returns(newPhoneNumber);
-        _emailAddressService.AddNewEmailAddress(entraUser.UserPrincipalName).Returns(newEmailAddress);
         _pureserviceUserService.CreateNewUser(entraUser, null, companyId, newPhysicalAddress.Id, newPhoneNumber.Id, newEmailAddress.Id, Arg.Any<string>()).Returns(newPureserviceUser);
         
         var exception = await Record.ExceptionAsync(async () => await _service.CreateUser(entraUser, null, companyId, department, location, synchronizationResult));
@@ -2553,15 +2759,19 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserUsernameUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserBasicPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressCheckFailedCount);
+        Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(1, synchronizationResult.UserCreatedCount);
         
+        await _emailAddressService.Received(1).EmailAddressExists(Arg.Any<string>());
+        await _emailAddressService.Received(1).AddNewEmailAddress(Arg.Is(entraUser.UserPrincipalName));
         await _physicalAddressService.Received(1).AddNewPhysicalAddress(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Is("Norway"));
         _graphService.Received(1).GetCustomSecurityAttribute(Arg.Is(entraUser), Arg.Is(Constants.CustomSecurityAttributeGroup), Arg.Is(Constants.CustomSecurityPhoneNumberAttributeName));
         await _phoneNumberService.Received(1).AddNewPhoneNumber(Arg.Is(mobile), Arg.Is(PhoneNumberType.Mobile));
-        await _emailAddressService.Received(1).AddNewEmailAddress(Arg.Is(entraUser.UserPrincipalName));
+        _graphService.Received(1).GetCustomSecurityAttribute(Arg.Is(entraUser), Arg.Is(Constants.CustomSecurityAttributeGroup), Arg.Is(Constants.CustomSecurityUserTypeAttributeName));
         await _pureserviceUserService.Received(1).CreateNewUser(Arg.Is(entraUser), Arg.Any<int?>(), Arg.Is(companyId), Arg.Is(newPhysicalAddress.Id), Arg.Is(newPhoneNumber.Id), Arg.Is(newEmailAddress.Id), Arg.Any<string>());
         
         if (hasLocation)

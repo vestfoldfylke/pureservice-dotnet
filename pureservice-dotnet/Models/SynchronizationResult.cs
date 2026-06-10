@@ -12,6 +12,8 @@ public class SynchronizationResult
     public int UserBasicPropertiesUpdatedCount { get; set; }
     public int UserUsernameUpdatedCount { get; set; }
     public int UserCompanyPropertiesUpdatedCount { get; set; }
+    public int UserEmailAddressCheckFailedCount { get; set; }
+    public int UserEmailAddressAlreadyExistsCount { get; set; }
     public int UserEmailAddressUpdatedCount { get; set; }
     public int UserPhoneNumberUpdatedCount { get; set; }
     public int UserCreatedCount { get; set; }
