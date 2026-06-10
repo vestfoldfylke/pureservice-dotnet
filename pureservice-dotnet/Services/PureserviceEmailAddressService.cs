@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using pureservice_dotnet.Models;
@@ -8,6 +9,7 @@ namespace pureservice_dotnet.Services;
 public interface IPureserviceEmailAddressService
 {
     Task<EmailAddress?> AddNewEmailAddress(string emailAddress);
+    Task<bool?> EmailAddressExists(string emailAddress);
     Task<bool> UpdateEmailAddress(int emailAddressId, string emailAddress, int userId);
 }
 
@@ -53,6 +55,26 @@ public class PureserviceEmailAddressService : IPureserviceEmailAddressService
         _logger.LogError("Failed to create EmailAddress {EmailAddress}: {@Payload}", emailAddress, payload);
         _metricsService.Count($"{Constants.MetricsPrefix}_EmailAddressCreated", "Number of email addresses created",
             (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
+        return null;
+    }
+
+    public async Task<bool?> EmailAddressExists(string emailAddress)
+    {
+        _logger.LogInformation("Checking if EmailAddress {EmailAddress} exists", emailAddress);
+        var result = await _pureserviceCaller.GetAsync<EmailAddressList>($"{BasePath}?filter=email = \"{emailAddress}\"");
+        if (result is not null)
+        {
+            if (result.Emailaddresses.Length > 0)
+            {
+                _logger.LogWarning("EmailAddress {EmailAddress} already exists in Pureservice on UserId(s) {UserId}", emailAddress, string.Join(", ", result.Emailaddresses.Select(e => e.UserId)));
+                return true;
+            }
+            
+            _logger.LogInformation("EmailAddress {EmailAddress} does not exist in Pureservice", emailAddress);
+            return false;
+        }
+        
+        _logger.LogError("Failed to check if EmailAddress {EmailAddress} exists in Pureservice", emailAddress);
         return null;
     }
 

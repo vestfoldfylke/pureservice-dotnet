@@ -6,12 +6,14 @@ name: Build and deploy dotnet core project to Azure Function App - vfkplzintegpu
 on:
   release:
     types: [published]
-    branches: [main]
   workflow_dispatch:
 
 jobs:
   deploy-az-app-service-dotnet:
-    uses: vestfoldfylke/shared/.github/workflows/deploy-az-app-service-dotnet.yml@main
+    if: |
+      github.event_name == 'workflow_dispatch' || 
+      (github.event_name == 'release' && github.event.release.target_commitish == 'main')
+    uses: vestfoldfylke/shared/.github/workflows/deploy-az-app-service-dotnet.yml@61217cca8eb8e9c7fdd000d8b12da3bc2b8d55cb # v1.0.3
     with:
       azure_appname: "vfkplzintegpuss" # required
       azure_functionapp_package_path: "pureservice-dotnet" # required. set to path project path. if multiple projects exists in same solution, set this to the project to deploy
