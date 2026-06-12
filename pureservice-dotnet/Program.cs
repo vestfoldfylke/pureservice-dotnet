@@ -20,6 +20,7 @@ builder.Services.AddSingleton<IPureserviceCompanyService, PureserviceCompanyServ
 builder.Services.AddSingleton<IPureserviceEmailAddressService, PureserviceEmailAddressService>();
 builder.Services.AddSingleton<IPureservicePhoneNumberService, PureservicePhoneNumberService>();
 builder.Services.AddSingleton<IPureservicePhysicalAddressService, PureservicePhysicalAddressService>();
+builder.Services.AddSingleton<IPureserviceTicketService, PureserviceTicketService>();
 builder.Services.AddSingleton<IPureserviceUserService, PureserviceUserService>();
 builder.Services.AddSingleton<IGraphService, GraphService>();
 

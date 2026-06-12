@@ -1,8 +1,8 @@
 # pureservice-dotnet
 
-Synchronization service to add / update / disable / enable user objects in Pureservice
+## Synchronization timer service to add / update / disable / enable user objects in Pureservice
 
-## Properties handled on employees from `Entra ID`
+### Properties handled on employees from `Entra ID`
 
 <b>All properties are kept in sync as long as the user is enabled in Entra ID. When a user is disabled in Entra ID, only the `disabled` property is kept in sync (set to true in Pureservice). When a user is re-enabled in Entra ID, all properties are kept in sync again.</b>
 
@@ -24,7 +24,7 @@ Synchronization service to add / update / disable / enable user objects in Pures
 | importUniqueKey         | id                 | Unique key for import (only set on creation)                      | basic        | int    | null          |
 | username                | userPrincipalName  | Username (update does not work for users with role Administrator) | basic        | int    | null          |
 
-## Properties handled on students from `Entra ID`
+### Properties handled on students from `Entra ID`
 
 <b>All properties are kept in sync as long as the user is enabled in Entra ID. When a user is disabled in Entra ID, only the `disabled` property is kept in sync (set to true in Pureservice). When a user is re-enabled in Entra ID, all properties are kept in sync again.</b>
 
@@ -45,14 +45,49 @@ Synchronization service to add / update / disable / enable user objects in Pures
 | importUniqueKey         | id                 | Unique key for import (only set on creation)                      | basic        | int    | null          |
 | username                | userPrincipalName  | Username (update does not work for users with role Administrator) | basic        | int    | null          |
 
+## CreateTicket method
+
+> `POST` tickets/create
+
+This method can be used to create tickets in Pureservice from other systems. It accepts a `CreateTicketPayload` object in the request body, which contains all the necessary information to create a ticket in Pureservice. The payload is then processed and a ticket is created in Pureservice using the Pureservice API.
+
+It will return the created ticket object as the response if the ticket was created successfully, or an error message if there was an issue.
+
+CreateTicketPayload:
+```json5
+{
+  "AdditionalData": { // optional and can contain any and as many primitive properties as you like. If present, the content of this object will be added to the description of the ticket in Pureservice under the header defined in Pureservice_Ticket_ExtraInformation.
+    "Address": "Home",
+    "Street": "Street 123"
+  },
+  "OriginatingReference": "12345", // A reference to the ticket in the originating system. If a user is created by this method, the Notes field will contain this reference. This reference will also be added to the description of the ticket in Pureservice under the header "Referanse".
+  "TicketMetaData": {
+    "AssignedDepartmentName": "Support", // The Pureservice_ApiKey MUST have the correct collaboration zone chosen for this to work.
+    "Description": "This is a test ticket created from the API. The content of AdditionalData will be added to the description of the ticket under the header defined in Pureservice_Ticket_ExtraInformation.",
+    "PriorityName": "Normal",
+    "RequestTypeId": 1, // Always use 1 (ticket)
+    "SourceName": "Email",
+    "StatusName": "Inbox",
+    "Subject": "Test Ticket from API",
+    "TicketTypeName": "Question"
+  },
+  "User": {
+    "EmailAddress": "foo@bar.biz",
+    "Name": "Foo Bar",
+    "PhoneNumber": "+4781549300"
+  }
+}
+```
+
 ## Setup
 
 Create a `local.settings.json` file in the `pureservice-dotnet` folder with the following content:
-```json
+```json5
 {
   "IsEncrypted": false,
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "AzureWebJobs.Synchronize.Disabled": "false", // optional. Set to true to disable the Synchronize function. Set to false or remove to enable it.
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
     "SynchronizeSchedule": "0 */5 * * * *",
     "Serilog__MinimumLevel__Override__Microsoft.Hosting": "Information",
@@ -70,6 +105,12 @@ Create a `local.settings.json` file in the `pureservice-dotnet` folder with the 
     "Pureservice_Max_Requests_Per_Minute": "100",
     "Pureservice_Wait_When_Max_Requests_Reached": "true",
     "Pureservice_Wait_Seconds": "30",
+    "Pureservice_Ticket_ExtraInformation": "Extra info", // Optional, defaults to "Ekstra informasjon". Description header added to a ticket when CreateTicketPayload.AdditionalData is present.
+    "Pureservice_Ticket_FallbackTypeName": "Question", // Optional, defaults to an empty string. The ticket type fallback name to use if CreateTicketPayload.TicketMetaData.TicketTypeName is not found in Pureservice when creating tickets.
+    "Pureservice_Ticket_FallbackPriorityName": "Normal", // Optional, defaults to an empty string. The ticket priority fallback name to use if CreateTicketPayload.TicketMetaData.PriorityName is not found in Pureservice when creating tickets.
+    "Pureservice_Ticket_FallbackStatusName": "Inbox", // Optional, defaults to an empty string. The ticket status fallback name to use if CreateTicketPayload.TicketMetaData.StatusName is not found in Pureservice when creating tickets.
+    "Pureservice_Ticket_FallbackSourceName": "Email", // Optional, defaults to an empty string. The ticket source fallback name to use if CreateTicketPayload.TicketMetaData.SourceName is not found in Pureservice when creating tickets.
+    "Pureservice_Ticket_FallbackAssignedDepartmentName": "Department", // Optional, defaults to an empty string. The ticket assigned department fallback name to use if CreateTicketPayload.TicketMetaData.AssignedDepartmentName is not found in Pureservice when creating tickets.
     "AZURE_CLIENT_ID": "azure-client-id",
     "AZURE_CLIENT_SECRET": "azure-client-secret",
     "AZURE_TENANT_ID": "azure-tenant-id",
@@ -103,7 +144,9 @@ This app requires an Azure App Registration with the following API permissions:
 #### Pureservice settings
 
 This app requires a Pureservice API key which has READ/WRITE persmissions. The API key can be of type `Unlimited` or `Limited`.<br />
-If the API key is of type `Limited`, it must have the correct collaboration zone chosen for it.<br />
+If the API key is of type `Limited`:
+- it must have the correct collaboration zone chosen for it.
+- it can NOT change usernames of users with the role `Administrator` in Pureservice!
 The API key should have short expiry time and should be rotated often!
 
 If `Pureservice_Wait_When_Max_Requests_Reached` is set to:<br />

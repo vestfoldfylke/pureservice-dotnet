@@ -1,0 +1,10 @@
+root = true
+
+[*.cs]
+# xUnit1025 fires as a false positive in Rider when using xunit.analyzers 1.27.0 (bundled with xunit.v3 3.2.x)
+dotnet_diagnostic.xUnit1025.severity = none
+
+# suppress xUnit v3 background analyzer false-positives on NSubstitute
+dotnet_diagnostic.xUnit1019.severity = none
+dotnet_diagnostic.xUnit1038.severity = none
+dotnet_diagnostic.xUnit1051.severity = none
