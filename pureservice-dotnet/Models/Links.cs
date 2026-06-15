@@ -26,4 +26,11 @@ public class Links
     public Link? UnavailableChangedBy { get; init; }
     public Link? CreatedBy { get; init; }
     public Link? ModifiedBy { get; init; }
+    public Link? RequestType { get; init; }
+    public Link? User { get; init; }
+    public Link? TicketType { get; init; }
+    public Link? Priority { get; init; }
+    public Link? Status { get; init; }
+    public Link? Source { get; init; }
+    public Link? AssignedDepartment { get; init; }
 }

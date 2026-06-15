@@ -2521,7 +2521,13 @@ public class UserFunctionsTests
             Created = DateTime.Now,
             CreatedById = 42
         };
-        var newPhysicalAddress = new PhysicalAddress(null, null, null, "Norway", 10, DateTime.Now, null, null, 42, null);
+        var newPhysicalAddress = new PhysicalAddress
+        {
+            Country = "Norway",
+            Id = 10,
+            Created = DateTime.Now,
+            CreatedById = 42
+        };
         
         var synchronizationResult = new SynchronizationResult();
 
@@ -2607,7 +2613,13 @@ public class UserFunctionsTests
             CreatedById = 1
         };
 
-        var newPhysicalAddress = new PhysicalAddress(null, null, null, "Norway", 10, DateTime.Now, null, null, 42, null);
+        var newPhysicalAddress = new PhysicalAddress
+        {
+            Country = "Norway",
+            Id = 10,
+            Created = DateTime.Now,
+            CreatedById = 42
+        };
         var newPhoneNumber = new PhoneNumber(mobile, mobile, PhoneNumberType.Mobile, null, 11, DateTime.Now, null, 42, null);
         var newEmailAddress = new EmailAddress
         {
@@ -2705,7 +2717,13 @@ public class UserFunctionsTests
                 }
             : null;
 
-        var newPhysicalAddress = new PhysicalAddress(null, null, null, "Norway", 10, DateTime.Now, null, null, 42, null);
+        var newPhysicalAddress = new PhysicalAddress
+        {
+            Country = "Norway",
+            Id = 10,
+            Created = DateTime.Now,
+            CreatedById = 42
+        };
         var newPhoneNumber = new PhoneNumber(mobile, mobile, PhoneNumberType.Mobile, null, 11, DateTime.Now, null, 42, null);
         var newEmailAddress = new EmailAddress
         {

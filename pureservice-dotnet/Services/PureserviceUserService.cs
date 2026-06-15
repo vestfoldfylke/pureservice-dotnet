@@ -15,9 +15,12 @@ namespace pureservice_dotnet.Services;
 public interface IPureserviceUserService
 {
     Task<User?> CreateNewUser(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId, int physicalAddressId, int? phoneNumberId, int emailAddressId, string? userType);
+    Task<User?> CreateManualUser(string givenName, string surname, int? physicalAddressId, int phoneNumberId, int emailAddressId, string notes);
     Dictionary<string, object?> GetNewUserPayload(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId, int physicalAddressId, int? phoneNumberId, int emailAddressId,
         string? userType);
-    Task<UserList> GetUser(int userId, string[]? entities = null);
+    Dictionary<string, object?> GetManualUserPayload(string givenName, string surname, int? physicalAddressId, int phoneNumberId, int emailAddressId, string notes);
+    Task<User?> GetUserByEmailAddress(string emailAddress);
+    Task<UserList> GetUserById(int userId, string[]? entities = null);
     Task<UserList> GetUsers(string[]? entities = null, int start = 0, int limit = 500, bool includeSystemUsers = false, bool includeInactiveUsers = false);
     List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))> NeedsBasicUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser = null, bool? handleStatusOnly = false, string? entraUserType = null);
     CompanyUpdateItem? NeedsCompanyUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies);
@@ -68,7 +71,34 @@ public class PureserviceUserService : IPureserviceUserService
         return null;
     }
     
-    public async Task<UserList> GetUser(int userId, string[]? entities = null)
+    public async Task<User?> CreateManualUser(string givenName, string surname, int? physicalAddressId, int phoneNumberId, int emailAddressId, string notes)
+    {
+        var payload = GetManualUserPayload(givenName, surname, physicalAddressId, phoneNumberId, emailAddressId, notes);
+        
+        _logger.LogInformation("Creating manual Pureservice user with Notes {Notes}", notes ?? "");
+        var result = await _pureserviceCaller.PostAsync<User>($"{BasePath}?include=emailaddress,phonenumbers", payload);
+
+        if (result is not null)
+        {
+            _logger.LogInformation("Successfully created manual Pureservice user with Notes {Notes} and UserId {UserId}", result.Notes, result.Id);
+            _metricsService.Count($"{Constants.MetricsPrefix}_CreatedManualUser", "Number of manual users created", (Constants.MetricsResultLabelName, Constants.MetricsResultSuccessLabelValue));
+            return result;
+        }
+        
+        _logger.LogError("Failed to create manual Pureservice user with Notes {Notes}: {@Payload}", notes, payload);
+        _metricsService.Count($"{Constants.MetricsPrefix}_CreatedManualUser", "Number of manual users created", (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue));
+        return null;
+    }
+
+    public async Task<User?> GetUserByEmailAddress(string emailAddress)
+    {
+        _logger.LogInformation("Getting user with email address {EmailAddress}", emailAddress);
+        var userList = await _pureserviceCaller.GetAsync<UserList>($"{BasePath}?filter=emailAddress.Email == \"{emailAddress}\"");
+
+        return userList?.Users.FirstOrDefault();
+    }
+
+    public async Task<UserList> GetUserById(int userId, string[]? entities = null)
     {
         if (entities == null)
         {
@@ -502,6 +532,53 @@ public class PureserviceUserService : IPureserviceUserService
         {
             ["id"] = phoneNumberId,
             ["type"] = "phonenumber"
+        });
+
+        return new Dictionary<string, object?>
+        {
+            ["users"] = new List<object> { userPayload }
+        };
+    }
+    
+    public Dictionary<string, object?> GetManualUserPayload(string givenName, string surname, int? physicalAddressId, int phoneNumberId, int emailAddressId, string notes)
+    {
+        var userPayload = new Dictionary<string, object?>
+        {
+            ["firstName"] = givenName,
+            ["lastName"] = surname,
+            ["unavailable"] = false,
+            ["notes"] = notes,
+            ["role"] = UserRole.Enduser,
+            ["disabled"] = false,
+            ["isSuperuser"] = false,
+            ["flushNotifications"] = true,
+            ["highlightNotifications"] = true,
+            ["notificationScheme"] = 1,
+            ["languageId"] = 2,
+            ["links"] = new Dictionary<string, object?>
+            {
+                ["phonenumber"] = new Dictionary<string, object?> { ["id"] = phoneNumberId, ["type"] = "phonenumber" },
+                ["emailAddress"] = new Dictionary<string, object?> { ["id"] = emailAddressId, ["type"] = "emailaddress" }
+            }
+        };
+
+        if (!physicalAddressId.HasValue)
+        {
+            return new Dictionary<string, object?>
+            {
+                ["users"] = new List<object> { userPayload }
+            };
+        }
+
+        if (userPayload["links"] is not Dictionary<string, object?> links)
+        {
+            throw new InvalidOperationException("Links dictionary is null when trying to add physical address link for manual user payload");
+        }
+        
+        links.Add("address", new Dictionary<string, object?>
+        {
+            ["id"] = physicalAddressId,
+            ["type"] = "physicaladdress"
         });
 
         return new Dictionary<string, object?>
