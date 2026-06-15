@@ -52,7 +52,7 @@ public class PureserviceTicketService : IPureserviceTicketService
             return result;
         }
         
-        _logger.LogError("Failed to create ticket with Payload: {@Payload}", payload);
+        _logger.LogError("Failed to create ticket with Payload: {@Payload}", ticketPayload);
         _metricsService.Count($"{Constants.MetricsPrefix}_CreatedNewTicket", "Number of tickets created", (Constants.MetricsResultLabelName, Constants.MetricsResultFailedLabelValue), ("OriginatingReference", payload.OriginatingReference));
         return null;
     }
