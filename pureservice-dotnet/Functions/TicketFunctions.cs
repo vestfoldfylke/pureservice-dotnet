@@ -224,7 +224,13 @@ public class TicketFunctions
         return user ?? throw new InvalidOperationException($"User with EmailAddress {payload.User.EmailAddress} failed to be created");
     }
 
-    private string GetTicketDescription(CreateTicketPayload payload) => payload.AdditionalData is null
-        ? payload.TicketMetaData.Description
-        : $"<p>{payload.TicketMetaData.Description}</p>\n<p>&nbsp;</p>\n<p><strong>{_ticketExtraInformation}</strong>:<br>{string.Join("<br>", payload.AdditionalData.Select(kvp => $"{kvp.Key}: {kvp.Value}"))}</p>\n<p>&nbsp;</p>\n<p><strong>Referanse:</strong><br>{payload.OriginatingReference}</p>";
+    private string GetTicketDescription(CreateTicketPayload payload)
+    {
+        var description = $"<p>{payload.TicketMetaData.Description}</p>\n<p>&nbsp;</p>";
+        var originatingReference = $"<p><strong>Referanse:</strong><br>{payload.OriginatingReference}</p>";
+        
+        return payload.AdditionalData is null
+            ? $"{description}\n{originatingReference}"
+            : $"{description}\n<p><strong>{_ticketExtraInformation}</strong>:<br>{string.Join("<br>", payload.AdditionalData.Select(kvp => $"{kvp.Key}: {kvp.Value}"))}</p>\n<p>&nbsp;</p>\n{originatingReference}";
+    }
 }

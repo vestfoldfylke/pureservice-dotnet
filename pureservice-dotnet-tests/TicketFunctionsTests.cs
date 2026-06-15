@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -82,7 +84,7 @@ public class TicketFunctionsTests
     [Fact]
     public async Task CreateTicket_Should_Return_BadRequest_When_Disabled_User_Failed_To_ReEnable()
     {
-        var payload = ValidPayload();
+        var payload = ValidPayload(false);
         var request = CreateHttpRequest(JsonSerializer.Serialize(payload));
 
         var user = new User
@@ -120,7 +122,7 @@ public class TicketFunctionsTests
     [Fact]
     public async Task CreateTicket_Should_Return_BadRequest_When_User_Doesnt_Exist_And_Failed_To_Add_New_PhoneNumber()
     {
-        var payload = ValidPayload();
+        var payload = ValidPayload(false);
         var request = CreateHttpRequest(JsonSerializer.Serialize(payload));
 
         _pureserviceUserService.GetUserByEmailAddress(Arg.Is(payload.User.EmailAddress)).ReturnsNull();
@@ -148,7 +150,7 @@ public class TicketFunctionsTests
     [Fact]
     public async Task CreateTicket_Should_Return_BadRequest_When_User_Doesnt_Exist_And_Failed_To_Add_New_EmailAddress()
     {
-        var payload = ValidPayload();
+        var payload = ValidPayload(false);
         var request = CreateHttpRequest(JsonSerializer.Serialize(payload));
 
         var phoneNumber = new PhoneNumber(
@@ -188,7 +190,7 @@ public class TicketFunctionsTests
     [Fact]
     public async Task CreateTicket_Should_Return_BadRequest_When_User_Doesnt_Exist_And_Failed_To_Add_New_User()
     {
-        var payload = ValidPayload();
+        var payload = ValidPayload(false);
         var request = CreateHttpRequest(JsonSerializer.Serialize(payload));
 
         var phoneNumber = new PhoneNumber(
@@ -236,7 +238,7 @@ public class TicketFunctionsTests
     [Fact]
     public async Task CreateTicket_Should_Throw_When_Enabled_User_And_Invalid_TicketType_And_Fallback()
     {
-        var payload = ValidPayload();
+        var payload = ValidPayload(false);
         var request = CreateHttpRequest(JsonSerializer.Serialize(payload));
 
         var user = new User
@@ -275,7 +277,7 @@ public class TicketFunctionsTests
     [Fact]
     public async Task CreateTicket_Should_Throw_When_Enabled_User_And_Invalid_Priority_And_Fallback()
     {
-        var payload = ValidPayload();
+        var payload = ValidPayload(false);
         var request = CreateHttpRequest(JsonSerializer.Serialize(payload));
 
         var user = new User
@@ -326,7 +328,7 @@ public class TicketFunctionsTests
     [Fact]
     public async Task CreateTicket_Should_Throw_When_Enabled_User_And_Invalid_Status_And_Fallback()
     {
-        var payload = ValidPayload();
+        var payload = ValidPayload(false);
         var request = CreateHttpRequest(JsonSerializer.Serialize(payload));
 
         var user = new User
@@ -391,7 +393,7 @@ public class TicketFunctionsTests
     [Fact]
     public async Task CreateTicket_Should_Throw_When_Enabled_User_And_Invalid_Source_And_Fallback()
     {
-        var payload = ValidPayload();
+        var payload = ValidPayload(false);
         var request = CreateHttpRequest(JsonSerializer.Serialize(payload));
 
         var user = new User
@@ -471,7 +473,7 @@ public class TicketFunctionsTests
     [Fact]
     public async Task CreateTicket_Should_Throw_When_Enabled_User_And_Invalid_AssignedDepartment_And_Fallback()
     {
-        var payload = ValidPayload();
+        var payload = ValidPayload(false);
         var request = CreateHttpRequest(JsonSerializer.Serialize(payload));
 
         var user = new User
@@ -565,7 +567,7 @@ public class TicketFunctionsTests
     [Fact]
     public async Task CreateTicket_Should_Return_BadRequest_When_Enabled_User_And_All_TicketMetaData_Valid_And_CreateTicket_Failed()
     {
-        var payload = ValidPayload();
+        var payload = ValidPayload(true);
         var request = CreateHttpRequest(JsonSerializer.Serialize(payload));
 
         var user = new User
@@ -665,10 +667,12 @@ public class TicketFunctionsTests
         await _pureserviceTicketService.DidNotReceive().GetTicketDepartmentByName(Arg.Is(_ticketAssignedDepartmentFallbackName));
     }
     
-    [Fact]
-    public async Task CreateTicket_Should_Return_Successful_When_Enabled_User_And_All_TicketMetaData_Valid_And_CreateTicket_Successful()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CreateTicket_Should_Return_Successful_When_Enabled_User_And_All_TicketMetaData_Valid_And_CreateTicket_Successful(bool useAdditionalData)
     {
-        var payload = ValidPayload();
+        var payload = ValidPayload(useAdditionalData);
         var request = CreateHttpRequest(JsonSerializer.Serialize(payload));
 
         var user = new User
@@ -798,7 +802,7 @@ public class TicketFunctionsTests
     [Fact]
     public async Task CreateTicket_Should_Return_Successful_When_Enabled_User_And_All_TicketMetaData_Invalid_And_All_Fallback_Valid_And_CreateTicket_Successful()
     {
-        var payload = ValidPayload();
+        var payload = ValidPayload(false);
         var request = CreateHttpRequest(JsonSerializer.Serialize(payload));
 
         var user = new User
@@ -944,8 +948,25 @@ public class TicketFunctionsTests
         return request;
     }
 
-    private static CreateTicketPayload ValidPayload() => new()
+    private static CreateTicketPayload ValidPayload(bool addAdditionalData)
     {
+        JsonObject? additionalData = null;
+        
+        if (addAdditionalData)
+        {
+            Dictionary<string, string> source = new()
+            {
+                ["Adresse"] = "Some road",
+                ["Postnummer"] = "42",
+                ["Sted"] = "Somewhere"
+            };
+
+            additionalData = new JsonObject(source.Select(kvp => new KeyValuePair<string, JsonNode?>(kvp.Key, kvp.Value)));
+        }
+
+        return new CreateTicketPayload
+        {
+            AdditionalData = additionalData,
             OriginatingReference = "Test1234",
             TicketMetaData = new CreateTicketMetaData
             {
@@ -965,4 +986,5 @@ public class TicketFunctionsTests
                 PhoneNumber = "12345678"
             }
         };
+    }
 }
