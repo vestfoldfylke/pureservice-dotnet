@@ -151,7 +151,7 @@ public class TicketFunctions
 
         if (ticket is null)
         {
-            _logger.LogError("Failed to create ticket linked to UserId {UserId} with EmailAddress {EmailAddress} from OriginatingReference {OriginatingReference}. TicketPayload: {@TicketPayload}", user.Id, payload.User.EmailAddress, payload.OriginatingReference, ticketPayload);
+            _logger.LogError("Failed to create ticket linked to UserId {UserId} with EmailAddress {EmailAddress} from OriginatingReference {OriginatingReference}", user.Id, payload.User.EmailAddress, payload.OriginatingReference);
             return new BadRequestObjectResult($"Failed to create ticket linked to UserId {user.Id} with EmailAddress {payload.User.EmailAddress} from OriginatingReference {payload.OriginatingReference}");
         }
         
