@@ -47,9 +47,9 @@
 
 ## CreateTicket method
 
-> `POST` tickets/create
-> `Content-Type: application/json`
-> Authorization is done with an API key in the `X-Functions-Key` header. API key is generated on the Azure Function App
+> `POST` tickets/create<br />
+> `Content-Type: application/json`<br />
+> `Authorization` is done with an API key in the `X-Functions-Key` header. API key is generated on the Azure Function App
 
 This method can be used to create tickets in Pureservice from other systems. It accepts a `CreateTicketPayload` object in the request body, which contains all the necessary information to create a ticket in Pureservice. The payload is then processed and a ticket is created in Pureservice using the Pureservice API.
 
