@@ -75,7 +75,7 @@ public class PureserviceUserService : IPureserviceUserService
     {
         var payload = GetManualUserPayload(givenName, surname, physicalAddressId, phoneNumberId, emailAddressId, notes);
         
-        _logger.LogInformation("Creating manual Pureservice user with Notes {Notes}", notes ?? "");
+        _logger.LogInformation("Creating manual Pureservice user with Notes {Notes}", notes);
         var result = await _pureserviceCaller.PostAsync<User>($"{BasePath}?include=emailaddress,phonenumbers", payload);
 
         if (result is not null)
