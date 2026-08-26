@@ -8,6 +8,7 @@ using pureservice_dotnet.Models;
 using pureservice_dotnet.Models.Enums;
 using pureservice_dotnet.Services;
 using Serilog.Context;
+using Vestfold.Extensions.Metrics.Services;
 
 namespace pureservice_dotnet.Functions;
 
@@ -15,6 +16,7 @@ public class UserFunctions
 {
     private readonly IGraphService _graphService;
     private readonly ILogger<UserFunctions> _logger;
+    private readonly IMetricsService _metrics;
     private readonly IPureserviceCaller _pureserviceCaller;
     private readonly IPureserviceCompanyService _pureserviceCompanyService;
     private readonly IPureserviceEmailAddressService _pureserviceEmailAddressService;
@@ -24,12 +26,13 @@ public class UserFunctions
 
     private const int MaxRunTimeInMinutes = 20;
 
-    public UserFunctions(IGraphService graphService, ILogger<UserFunctions> logger, IPureserviceCaller pureserviceCaller, IPureserviceCompanyService pureserviceCompanyService,
+    public UserFunctions(IGraphService graphService, ILogger<UserFunctions> logger, IMetricsService metrics, IPureserviceCaller pureserviceCaller, IPureserviceCompanyService pureserviceCompanyService,
         IPureserviceEmailAddressService pureserviceEmailAddressService, IPureservicePhoneNumberService pureservicePhoneNumberService,
         IPureservicePhysicalAddressService pureservicePhysicalAddressService, IPureserviceUserService pureserviceUserService)
     {
         _graphService = graphService;
         _logger = logger;
+        _metrics = metrics;
         _pureserviceCaller = pureserviceCaller;
         _pureserviceCompanyService = pureserviceCompanyService;
         _pureserviceEmailAddressService = pureserviceEmailAddressService;

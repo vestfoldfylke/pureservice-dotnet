@@ -12,6 +12,7 @@ using pureservice_dotnet.Functions;
 using pureservice_dotnet.Models;
 using pureservice_dotnet.Models.Enums;
 using pureservice_dotnet.Services;
+using Vestfold.Extensions.Metrics.Services;
 
 namespace pureservice_dotnet_tests;
 
@@ -37,10 +38,12 @@ public class UserFunctionsTests
         _phoneNumberService = Substitute.For<IPureservicePhoneNumberService>();
         _physicalAddressService = Substitute.For<IPureservicePhysicalAddressService>();
         _pureserviceUserService = Substitute.For<IPureserviceUserService>();
-
-        _service = new UserFunctions(_graphService, Substitute.For<ILogger<UserFunctions>>(), _pureserviceCaller, _companyService, _emailAddressService, _phoneNumberService,
-            _physicalAddressService, _pureserviceUserService);
         
+        IMetricsService metricsService = Substitute.For<IMetricsService>();
+
+        _service = new UserFunctions(_graphService, Substitute.For<ILogger<UserFunctions>>(), metricsService, _pureserviceCaller, _companyService, _emailAddressService, _phoneNumberService,
+            _physicalAddressService, _pureserviceUserService);
+
         var userServiceConfiguration = new ConfigurationBuilder()
             .AddJsonFile("appsettings.json")
             .Build();
@@ -476,6 +479,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -621,6 +625,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
 
@@ -768,6 +773,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
 
@@ -1003,6 +1009,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(1, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -1252,6 +1259,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(1, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -1507,6 +1515,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(1, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -1753,6 +1762,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(1, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -1880,6 +1890,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -2037,6 +2048,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
 
@@ -2125,6 +2137,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserCompanyPropertiesUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -2202,6 +2215,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserEmailAddressCheckFailedCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
+        Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
@@ -2283,6 +2297,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressCheckFailedCount);
         Assert.Equal(1, synchronizationResult.UserEmailAddressAlreadyExistsCount);
+        Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
@@ -2366,6 +2381,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -2456,6 +2472,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -2555,6 +2572,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -2655,6 +2673,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -2781,6 +2800,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(1, synchronizationResult.UserCreatedCount);
         
