@@ -383,13 +383,13 @@ public class UserFunctionsTests
             .GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Is(Constants.CustomSecurityAttributeGroup), Arg.Is(Constants.CustomSecurityUserTypeAttributeName));
         _phoneNumberService.Received(1).NeedsPhoneNumberUpdate(Arg.Any<PhoneNumber>(), Arg.Any<string>());
         
-        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<(string, (string?, int?, bool?))>>(bui =>
-            bui.Count == 5 &&
-            bui.Exists(b => b.Item1 == "disabled" && b.Item2.Item3 == false) &&
-            bui.Exists(b => b.Item1 == "firstName" && b.Item2.Item1 == entraUser.GivenName) &&
-            bui.Exists(b => b.Item1 == "lastName" && b.Item2.Item1 == entraUser.Surname) &&
-            bui.Exists(b => b.Item1 == "title" && b.Item2.Item1 == entraUser.JobTitle) &&
-            bui.Exists(b => b.Item1 == _userTypeCustomField && b.Item2.Item1 == userType)
+        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<(string, (string?, int?, bool?))>>(basicUserPropertiesToUpdate =>
+            basicUserPropertiesToUpdate.Count == 5 &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "disabled" && property.Item2.Item3 == false) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "firstName" && property.Item2.Item1 == entraUser.GivenName) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "lastName" && property.Item2.Item1 == entraUser.Surname) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "title" && property.Item2.Item1 == entraUser.JobTitle) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == _userTypeCustomField && property.Item2.Item1 == userType)
         ));
         await _pureserviceUserService.Received(1).UpdateUsername(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
         await _emailAddressService.Received(1).UpdateEmailAddress(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<int>());
@@ -672,22 +672,22 @@ public class UserFunctionsTests
             .GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Is(Constants.CustomSecurityAttributeGroup), Arg.Is(Constants.CustomSecurityUserTypeAttributeName));
         _phoneNumberService.Received(pureserviceUsers.Count).NeedsPhoneNumberUpdate(Arg.Any<PhoneNumber>(), Arg.Any<string>());
         
-        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Is(pureserviceUserWithOldId.Id), Arg.Is<List<(string, (string?, int?, bool?))>>(bui =>
-            bui.Count == 6 &&
-            bui.Exists(b => b.Item1 == "disabled" && b.Item2.Item3 == false) &&
-            bui.Exists(b => b.Item1 == "firstName" && b.Item2.Item1 == entraUserWithNewId.GivenName) &&
-            bui.Exists(b => b.Item1 == "lastName" && b.Item2.Item1 == entraUserWithNewId.Surname) &&
-            bui.Exists(b => b.Item1 == "title" && b.Item2.Item1 == entraUserWithNewId.JobTitle) &&
-            bui.Exists(b => b.Item1 == _userTypeCustomField && b.Item2.Item1 == userType) &&
-            bui.Exists(b => b.Item1 == "importUniqueKey" && b.Item2.Item1 == entraUserWithNewId.Id)
+        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Is(pureserviceUserWithOldId.Id), Arg.Is<List<(string, (string?, int?, bool?))>>(basicUserPropertiesToUpdate =>
+            basicUserPropertiesToUpdate.Count == 6 &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "disabled" && property.Item2.Item3 == false) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "firstName" && property.Item2.Item1 == entraUserWithNewId.GivenName) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "lastName" && property.Item2.Item1 == entraUserWithNewId.Surname) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "title" && property.Item2.Item1 == entraUserWithNewId.JobTitle) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == _userTypeCustomField && property.Item2.Item1 == userType) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "importUniqueKey" && property.Item2.Item1 == entraUserWithNewId.Id)
         ));
         
-        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Is(pureserviceUserWithSameId.Id), Arg.Is<List<(string, (string?, int?, bool?))>>(bui =>
-            bui.Count == 4 &&
-            bui.Exists(b => b.Item1 == "firstName" && b.Item2.Item1 == entraUserWithSameId.GivenName) &&
-            bui.Exists(b => b.Item1 == "lastName" && b.Item2.Item1 == entraUserWithSameId.Surname) &&
-            bui.Exists(b => b.Item1 == "title" && b.Item2.Item1 == entraUserWithSameId.JobTitle) &&
-            bui.Exists(b => b.Item1 == _userTypeCustomField && b.Item2.Item1 == userType)
+        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Is(pureserviceUserWithSameId.Id), Arg.Is<List<(string, (string?, int?, bool?))>>(basicUserPropertiesToUpdate =>
+            basicUserPropertiesToUpdate.Count == 4 &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "firstName" && property.Item2.Item1 == entraUserWithSameId.GivenName) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "lastName" && property.Item2.Item1 == entraUserWithSameId.Surname) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "title" && property.Item2.Item1 == entraUserWithSameId.JobTitle) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == _userTypeCustomField && property.Item2.Item1 == userType)
         ));
         
         _metricsService.Received(1).Count($"{Constants.MetricsPrefix}_ImportUniqueKeyUpdated", Arg.Any<string>(), (Constants.MetricsResultLabelName, Constants.MetricsResultSuccessLabelValue));
@@ -831,14 +831,14 @@ public class UserFunctionsTests
             .GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Is(Constants.CustomSecurityAttributeGroup), Arg.Is(Constants.CustomSecurityUserTypeAttributeName));
         _phoneNumberService.Received(pureserviceUsers.Count).NeedsPhoneNumberUpdate(Arg.Any<PhoneNumber>(), Arg.Any<string>());
         
-        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Is(pureserviceUserWithOldId.Id), Arg.Is<List<(string, (string?, int?, bool?))>>(bui =>
-            bui.Count == 6 &&
-            bui.Exists(b => b.Item1 == "disabled" && b.Item2.Item3 == false) &&
-            bui.Exists(b => b.Item1 == "firstName" && b.Item2.Item1 == entraUserWithNewId.GivenName) &&
-            bui.Exists(b => b.Item1 == "lastName" && b.Item2.Item1 == entraUserWithNewId.Surname) &&
-            bui.Exists(b => b.Item1 == "title" && b.Item2.Item1 == entraUserWithNewId.JobTitle) &&
-            bui.Exists(b => b.Item1 == _userTypeCustomField && b.Item2.Item1 == userType) &&
-            bui.Exists(b => b.Item1 == "importUniqueKey" && b.Item2.Item1 == entraUserWithNewId.Id)
+        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Is(pureserviceUserWithOldId.Id), Arg.Is<List<(string, (string?, int?, bool?))>>(basicUserPropertiesToUpdate =>
+            basicUserPropertiesToUpdate.Count == 6 &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "disabled" && property.Item2.Item3 == false) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "firstName" && property.Item2.Item1 == entraUserWithNewId.GivenName) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "lastName" && property.Item2.Item1 == entraUserWithNewId.Surname) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "title" && property.Item2.Item1 == entraUserWithNewId.JobTitle) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == _userTypeCustomField && property.Item2.Item1 == userType) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "importUniqueKey" && property.Item2.Item1 == entraUserWithNewId.Id)
         ));
         
         _metricsService.DidNotReceive().Count($"{Constants.MetricsPrefix}_ImportUniqueKeyUpdated", Arg.Any<string>(), Arg.Any<(string, string)>());
@@ -1219,9 +1219,9 @@ public class UserFunctionsTests
         Assert.Single(locations);
 
         // NOTE: There should be only one call to UpdateCompanyProperties where propertiesToUpdate only has 1 item (since department and location should not be updated when company is updated)
-        await _pureserviceUserService.Received(1).UpdateCompanyProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<CompanyUpdateItem>>(cui =>
-            cui.Count == 1 &&
-            cui.Exists(c => c.PropertyName == "companyId" && c.Id == companyId)));
+        await _pureserviceUserService.Received(1).UpdateCompanyProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<CompanyUpdateItem>>(companyUpdateItems =>
+            companyUpdateItems.Count == 1 &&
+            companyUpdateItems.Exists(companyUpdateItem => companyUpdateItem.PropertyName == "companyId" && companyUpdateItem.Id == companyId)));
         
         await _pureserviceUserService.DidNotReceive().UpdateBasicProperties(Arg.Any<int>(), Arg.Any<List<(string, (string?, int?, bool?))>>());
         await _pureserviceUserService.DidNotReceive().UpdateUsername(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
@@ -1368,10 +1368,10 @@ public class UserFunctionsTests
         Assert.Single(departments);
         Assert.Single(locations);
         
-        await _pureserviceUserService.Received(1).UpdateCompanyProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<CompanyUpdateItem>>(cui =>
-            cui.Count == 2 &&
-            cui.Exists(c => c.PropertyName == "companyDepartmentId" && c.Id == departmentId) &&
-            cui.Exists(c => c.PropertyName == "companyLocationId" && c.Id == locationId)));
+        await _pureserviceUserService.Received(1).UpdateCompanyProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<CompanyUpdateItem>>(companyUpdateItems =>
+            companyUpdateItems.Count == 2 &&
+            companyUpdateItems.Exists(companyUpdateItem => companyUpdateItem.PropertyName == "companyDepartmentId" && companyUpdateItem.Id == departmentId) &&
+            companyUpdateItems.Exists(companyUpdateItem => companyUpdateItem.PropertyName == "companyLocationId" && companyUpdateItem.Id == locationId)));
         
         await _pureserviceUserService.DidNotReceive().UpdateBasicProperties(Arg.Any<int>(), Arg.Any<List<(string, (string?, int?, bool?))>>());
         await _pureserviceUserService.DidNotReceive().UpdateUsername(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
@@ -1606,21 +1606,21 @@ public class UserFunctionsTests
         Assert.Equal(2, departments.Count);
         Assert.Equal(2, locations.Count);
 
-        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<(string, (string?, int?, bool?))>>(bui =>
-            bui.Count == 6 &&
-            bui.Exists(b => b.Item1 == "firstName" && b.Item2.Item1 == newFirstName) &&
-            bui.Exists(b => b.Item1 == "lastName" && b.Item2.Item1 == newLastName) &&
-            bui.Exists(b => b.Item1 == "title" && b.Item2.Item1 == newTitle) &&
-            bui.Exists(b => b.Item1 == "managerId" && b.Item2.Item2 == newManagerId) &&
-            bui.Exists(b => b.Item1 == "disabled" && b.Item2.Item3 == false) &&
-            bui.Exists(b => b.Item1 == _userTypeCustomField && b.Item2.Item1 == newUserType)));
+        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<(string, (string?, int?, bool?))>>(basicUserPropertiesToUpdate =>
+            basicUserPropertiesToUpdate.Count == 6 &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "firstName" && property.Item2.Item1 == newFirstName) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "lastName" && property.Item2.Item1 == newLastName) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "title" && property.Item2.Item1 == newTitle) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "managerId" && property.Item2.Item2 == newManagerId) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "disabled" && property.Item2.Item3 == false) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == _userTypeCustomField && property.Item2.Item1 == newUserType)));
         
         await _pureserviceUserService.Received(1).UpdateUsername(Arg.Is(pureserviceUser.Id), Arg.Is(credential.Id), Arg.Is(newEmail));
         
         // NOTE: There should be only one call to UpdateCompanyProperties where propertiesToUpdate only has 1 item (since department and location should not be updated when company is updated)
-        await _pureserviceUserService.Received(1).UpdateCompanyProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<CompanyUpdateItem>>(cui =>
-            cui.Count == 1 &&
-            cui.Exists(c => c.PropertyName == "companyId" && c.Id == newCompanyId)));
+        await _pureserviceUserService.Received(1).UpdateCompanyProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<CompanyUpdateItem>>(companyUpdateItems =>
+            companyUpdateItems.Count == 1 &&
+            companyUpdateItems.Exists(companyUpdateItem => companyUpdateItem.PropertyName == "companyId" && companyUpdateItem.Id == newCompanyId)));
         
         await _emailAddressService.Received(1).UpdateEmailAddress(Arg.Is(emailAddress.Id), Arg.Is(entraUser.Mail), Arg.Is(pureserviceUser.Id));
         
@@ -1858,22 +1858,22 @@ public class UserFunctionsTests
         Assert.Equal(2, departments.Count);
         Assert.Equal(2, locations.Count);
 
-        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<(string, (string?, int?, bool?))>>(bui =>
-            bui.Count == 6 &&
-            bui.Exists(b => b.Item1 == "firstName" && b.Item2.Item1 == newFirstName) &&
-            bui.Exists(b => b.Item1 == "lastName" && b.Item2.Item1 == newLastName) &&
-            bui.Exists(b => b.Item1 == "title" && b.Item2.Item1 == newTitle) &&
-            bui.Exists(b => b.Item1 == "managerId" && b.Item2.Item2 == newManagerId) &&
-            bui.Exists(b => b.Item1 == "disabled" && b.Item2.Item3 == false) &&
-            bui.Exists(b => b.Item1 == _userTypeCustomField && b.Item2.Item1 == newUserType)));
+        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<(string, (string?, int?, bool?))>>(basicUserPropertiesToUpdate =>
+            basicUserPropertiesToUpdate.Count == 6 &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "firstName" && property.Item2.Item1 == newFirstName) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "lastName" && property.Item2.Item1 == newLastName) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "title" && property.Item2.Item1 == newTitle) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "managerId" && property.Item2.Item2 == newManagerId) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "disabled" && property.Item2.Item3 == false) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == _userTypeCustomField && property.Item2.Item1 == newUserType)));
         
         await _pureserviceUserService.Received(1).UpdateUsername(Arg.Is(pureserviceUser.Id), Arg.Is(credential.Id), Arg.Is(newEmail));
         
         // NOTE: There should be only one call to UpdateCompanyProperties where propertiesToUpdate only has 1 item (since department and location should not be updated when company is updated)
-        await _pureserviceUserService.Received(1).UpdateCompanyProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<CompanyUpdateItem>>(cui =>
-            cui.Count == 2 &&
-            cui.Exists(c => c.PropertyName == "companyDepartmentId" && c.Id == newDepartmentId) &&
-            cui.Exists(c => c.PropertyName == "companyLocationId" && c.Id == newLocationId)));
+        await _pureserviceUserService.Received(1).UpdateCompanyProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<CompanyUpdateItem>>(companyUpdateItems =>
+            companyUpdateItems.Count == 2 &&
+            companyUpdateItems.Exists(companyUpdateItem => companyUpdateItem.PropertyName == "companyDepartmentId" && companyUpdateItem.Id == newDepartmentId) &&
+            companyUpdateItems.Exists(companyUpdateItem => companyUpdateItem.PropertyName == "companyLocationId" && companyUpdateItem.Id == newLocationId)));
         
         await _emailAddressService.Received(1).UpdateEmailAddress(Arg.Is(emailAddress.Id), Arg.Is(entraUser.Mail), Arg.Is(pureserviceUser.Id));
         
@@ -2116,14 +2116,14 @@ public class UserFunctionsTests
         Assert.Equal(2, departments.Count);
         Assert.Equal(2, locations.Count);
 
-        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<(string, (string?, int?, bool?))>>(bui =>
-            bui.Count == 6 &&
-            bui.Exists(b => b.Item1 == "firstName" && b.Item2.Item1 == newFirstName) &&
-            bui.Exists(b => b.Item1 == "lastName" && b.Item2.Item1 == newLastName) &&
-            bui.Exists(b => b.Item1 == "title" && b.Item2.Item1 == newTitle) &&
-            bui.Exists(b => b.Item1 == "managerId" && b.Item2.Item2 == newManagerId) &&
-            bui.Exists(b => b.Item1 == "disabled" && b.Item2.Item3 == false) &&
-            bui.Exists(b => b.Item1 == _userTypeCustomField && b.Item2.Item1 == newUserType)));
+        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<(string, (string?, int?, bool?))>>(basicUserPropertiesToUpdate =>
+            basicUserPropertiesToUpdate.Count == 6 &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "firstName" && property.Item2.Item1 == newFirstName) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "lastName" && property.Item2.Item1 == newLastName) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "title" && property.Item2.Item1 == newTitle) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "managerId" && property.Item2.Item2 == newManagerId) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "disabled" && property.Item2.Item3 == false) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == _userTypeCustomField && property.Item2.Item1 == newUserType)));
         
         await _pureserviceUserService.Received(1).UpdateUsername(Arg.Is(pureserviceUser.Id), Arg.Is(credential.Id), Arg.Is(newEmail));
         
@@ -2131,10 +2131,10 @@ public class UserFunctionsTests
         await _companyService.Received(1).AddLocation(Arg.Is(newLocationName), Arg.Is(companyId));
         
         // NOTE: There should be only one call to UpdateCompanyProperties where propertiesToUpdate only has 1 item (since department and location should not be updated when company is updated)
-        await _pureserviceUserService.Received(1).UpdateCompanyProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<CompanyUpdateItem>>(cui =>
-            cui.Count == 2 &&
-            cui.Exists(c => c.PropertyName == "companyDepartmentId" && c.Id == newDepartmentId) &&
-            cui.Exists(c => c.PropertyName == "companyLocationId" && c.Id == newLocationId)));
+        await _pureserviceUserService.Received(1).UpdateCompanyProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<CompanyUpdateItem>>(companyUpdateItems =>
+            companyUpdateItems.Count == 2 &&
+            companyUpdateItems.Exists(companyUpdateItem => companyUpdateItem.PropertyName == "companyDepartmentId" && companyUpdateItem.Id == newDepartmentId) &&
+            companyUpdateItems.Exists(companyUpdateItem => companyUpdateItem.PropertyName == "companyLocationId" && companyUpdateItem.Id == newLocationId)));
         
         await _emailAddressService.Received(1).UpdateEmailAddress(Arg.Is(emailAddress.Id), Arg.Is(entraUser.Mail), Arg.Is(pureserviceUser.Id));
         
@@ -2365,21 +2365,21 @@ public class UserFunctionsTests
         Assert.Single(departments);
         Assert.Single(locations);
 
-        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<(string, (string?, int?, bool?))>>(bui =>
-            bui.Count == 6 &&
-            bui.Exists(b => b.Item1 == "firstName" && b.Item2.Item1 == newFirstName) &&
-            bui.Exists(b => b.Item1 == "lastName" && b.Item2.Item1 == newLastName) &&
-            bui.Exists(b => b.Item1 == "title" && b.Item2.Item1 == newTitle) &&
-            bui.Exists(b => b.Item1 == "managerId" && b.Item2.Item2 == newManagerId) &&
-            bui.Exists(b => b.Item1 == "disabled" && b.Item2.Item3 == false) &&
-            bui.Exists(b => b.Item1 == _userTypeCustomField && b.Item2.Item1 == newUserType)));
+        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<(string, (string?, int?, bool?))>>(basicUserPropertiesToUpdate =>
+            basicUserPropertiesToUpdate.Count == 6 &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "firstName" && property.Item2.Item1 == newFirstName) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "lastName" && property.Item2.Item1 == newLastName) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "title" && property.Item2.Item1 == newTitle) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "managerId" && property.Item2.Item2 == newManagerId) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "disabled" && property.Item2.Item3 == false) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == _userTypeCustomField && property.Item2.Item1 == newUserType)));
         
         await _companyService.Received(1).AddCompany(Arg.Is(newCompanyName));
         
         // NOTE: There should be only one call to UpdateCompanyProperties where propertiesToUpdate only has 1 item (since department and location should not be updated when company is updated)
-        await _pureserviceUserService.Received(1).UpdateCompanyProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<CompanyUpdateItem>>(cui =>
-            cui.Count == 1 &&
-            cui.Exists(c => c.PropertyName == "companyId" && c.Id == newCompanyId)));
+        await _pureserviceUserService.Received(1).UpdateCompanyProperties(Arg.Is(pureserviceUser.Id), Arg.Is<List<CompanyUpdateItem>>(companyUpdateItems =>
+            companyUpdateItems.Count == 1 &&
+            companyUpdateItems.Exists(companyUpdateItem => companyUpdateItem.PropertyName == "companyId" && companyUpdateItem.Id == newCompanyId)));
         
         await _emailAddressService.Received(1).UpdateEmailAddress(Arg.Is(emailAddress.Id), Arg.Is(entraUser.Mail), Arg.Is(pureserviceUser.Id));
         
@@ -2495,9 +2495,9 @@ public class UserFunctionsTests
         _graphService.Received(1)
             .GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Is(Constants.CustomSecurityAttributeGroup), Arg.Is(Constants.CustomSecurityUserTypeAttributeName));
         _pureserviceUserService.Received(1).NeedsBasicUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), handleStatusOnly: shouldBeDisabled, entraUserType: entraUserType);
-        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Any<int>(), Arg.Is<List<(string, (string?, int?, bool?))>>(bui =>
-            bui.Count == 1 &&
-            bui.Exists(b => b.Item1 == "disabled" && b.Item2.Item3 == true)));
+        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Any<int>(), Arg.Is<List<(string, (string?, int?, bool?))>>(basicUserPropertiesToUpdate =>
+            basicUserPropertiesToUpdate.Count == 1 &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "disabled" && property.Item2.Item3 == true)));
         
         _pureserviceUserService.DidNotReceive().NeedsUsernameUpdate(Arg.Any<Credential>(), Arg.Any<Microsoft.Graph.Models.User>());
         _pureserviceUserService.DidNotReceive().NeedsCompanyUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>());

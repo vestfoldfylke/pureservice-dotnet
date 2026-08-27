@@ -51,8 +51,8 @@ public class UserFunctions
         var entraEmployees = await _graphService.GetEmployees();
         var entraStudents = await _graphService.GetStudents();
         var entraUsers = entraEmployees.Concat(entraStudents)
-            .Where(u => !string.IsNullOrEmpty(u.Id))
-            .DistinctBy(u => u.Id)
+            .Where(user => !string.IsNullOrEmpty(user.Id))
+            .DistinctBy(user => user.Id)
             .ToList();
         
         _logger.LogInformation("Retrieved {EmployeeCount} employees, {StudentCount} students, total {TotalCount} from Entra", entraEmployees.Count, entraStudents.Count, entraUsers.Count);
@@ -120,7 +120,7 @@ public class UserFunctions
                         var userUpdateResult = await HandleUpdateUser(pureserviceUserWithSameUserPrincipalName, entraUser, pureserviceManagerUser, companies, departments, locations, pureserviceUsers,
                             synchronizationResult);
 
-                        if ((userUpdateResult.BasicPropertiesUpdated?.Any(p => p.propertyName == "importUniqueKey") ?? false) && synchronizationResult.UserBasicPropertiesUpdatedCount > 0)
+                        if ((userUpdateResult.BasicPropertiesUpdated?.Any(property => property.propertyName == "importUniqueKey") ?? false) && synchronizationResult.UserBasicPropertiesUpdatedCount > 0)
                         {
                             synchronizationResult.UserImportUniqueKeyUpdatedCount++;
                             _logger.LogWarning(
@@ -133,7 +133,7 @@ public class UserFunctions
                         continue;
                     }
 
-                    var company = companies.Find(c => c.Name.Equals(entraUser.CompanyName, StringComparison.OrdinalIgnoreCase));
+                    var company = companies.Find(company => company.Name.Equals(entraUser.CompanyName, StringComparison.OrdinalIgnoreCase));
                     if (company is null)
                     {
                         company = await _pureserviceCompanyService.AddCompany(entraUser.CompanyName!);
@@ -150,12 +150,12 @@ public class UserFunctions
 
                     // NOTE: If department isn't found because company was just created, it will be created in the next sweep when user will be updated
                     var department = entraUser.Department is not null
-                        ? departments.Find(d => d.Name.Equals(entraUser.Department, StringComparison.OrdinalIgnoreCase) && d.CompanyId == company.Id)
+                        ? departments.Find(department => department.Name.Equals(entraUser.Department, StringComparison.OrdinalIgnoreCase) && department.CompanyId == company.Id)
                         : null;
 
                     // NOTE: If location isn't found because company was just created, it will be created in the next sweep when user will be updated
                     var location = entraUser.OfficeLocation is not null
-                        ? locations.Find(l => l.Name.Equals(entraUser.OfficeLocation, StringComparison.OrdinalIgnoreCase) && l.CompanyId == company.Id)
+                        ? locations.Find(location => location.Name.Equals(entraUser.OfficeLocation, StringComparison.OrdinalIgnoreCase) && location.CompanyId == company.Id)
                         : null;
 
                     await CreateUser(entraUser, pureserviceManagerUser, company.Id, department, location, synchronizationResult);
@@ -367,7 +367,7 @@ public class UserFunctions
                 }
                 else
                 {
-                    var company = companies.Find(c => c.Id == pureserviceUser.CompanyId.Value);
+                    var company = companies.Find(company => company.Id == pureserviceUser.CompanyId.Value);
                     if (company is not null)
                     {
                         var (updateItem, department) = await GetOrCreateDepartment(departmentUpdate, company);
@@ -392,7 +392,7 @@ public class UserFunctions
                 }
                 else
                 {
-                    var company = companies.Find(c => c.Id == pureserviceUser.CompanyId.Value);
+                    var company = companies.Find(company => company.Id == pureserviceUser.CompanyId.Value);
                     if (company is not null)
                     {
                         var (updateItem, location) = await GetOrCreateLocation(locationUpdate, company);
@@ -431,7 +431,7 @@ public class UserFunctions
                 return userUpdateResult;
             }
             
-            phoneNumber = phoneNumbers.Find(p => p.Number == phoneNumberUpdate.PhoneNumber);
+            phoneNumber = phoneNumbers.Find(phone => phone.Number == phoneNumberUpdate.PhoneNumber);
             if (phoneNumber is not null)
             {
                 if (await _pureserviceUserService.RegisterPhoneNumberAsDefault(pureserviceUser.Id, phoneNumber.Id))
@@ -481,22 +481,22 @@ public class UserFunctions
         }
 
         return pureserviceUsers.Users
-            .Where(u => u.Disabled)
-            .Where(u =>
+            .Where(user => user.Disabled)
+            .Where(user =>
                 {
-                    if (string.IsNullOrEmpty(u.ImportUniqueKey))
+                    if (string.IsNullOrEmpty(user.ImportUniqueKey))
                     {
                         return false;
                     }
 
-                    var pureserviceEmailAddress = pureserviceUsers.Linked.EmailAddresses.Find(e => e.Id == u.EmailAddressId);
+                    var pureserviceEmailAddress = pureserviceUsers.Linked.EmailAddresses.Find(emailAddress => emailAddress.Id == user.EmailAddressId);
                     if (pureserviceEmailAddress is null)
                     {
                         return false;
                     }
 
                     return string.Compare(entraUser.UserPrincipalName, pureserviceEmailAddress.Email, StringComparison.OrdinalIgnoreCase) == 0 &&
-                           string.Compare(entraUser.Id, u.ImportUniqueKey, StringComparison.OrdinalIgnoreCase) != 0;
+                           string.Compare(entraUser.Id, user.ImportUniqueKey, StringComparison.OrdinalIgnoreCase) != 0;
                 })
             .ToList();
     }
@@ -525,7 +525,7 @@ public class UserFunctions
                 throw new InvalidOperationException("Expected linked results were not found in user list");
             }
 
-            var phoneNumbers = pureserviceUsers.Linked.PhoneNumbers.Where(p => phoneNumberIds.Contains(p.Id)).ToList();
+            var phoneNumbers = pureserviceUsers.Linked.PhoneNumbers.Where(phone => phoneNumberIds.Contains(phone.Id)).ToList();
 
             return await UpdateUser(pureserviceUser, entraUser, credential, primaryEmailAddress, primaryPhoneNumber, phoneNumbers, pureserviceManagerUser, companies, departments, locations, synchronizationResult);
         }
@@ -548,10 +548,10 @@ public class UserFunctions
             return (null, null, true);
         }
             
-        var pureserviceUser = pureserviceUsers.Users.Find(u => !string.IsNullOrEmpty(u.ImportUniqueKey) && u.ImportUniqueKey == entraUser.Id);
+        var pureserviceUser = pureserviceUsers.Users.Find(user => !string.IsNullOrEmpty(user.ImportUniqueKey) && user.ImportUniqueKey == entraUser.Id);
             
         var pureserviceManagerUser = entraUser.Manager?.Id is not null
-            ? pureserviceUsers.Users.Find(u => !string.IsNullOrEmpty(u.ImportUniqueKey) && u.ImportUniqueKey == entraUser.Manager.Id)
+            ? pureserviceUsers.Users.Find(user => !string.IsNullOrEmpty(user.ImportUniqueKey) && user.ImportUniqueKey == entraUser.Manager.Id)
             : null;
         
         return (pureserviceUser, pureserviceManagerUser, false);
@@ -581,7 +581,7 @@ public class UserFunctions
             return (null, null, null, []);
         }
         
-        var credential = pureserviceUsers.Linked!.Credentials!.Find(c => c.Id == pureserviceUser.Links.Credentials.Id);
+        var credential = pureserviceUsers.Linked!.Credentials!.Find(credential => credential.Id == pureserviceUser.Links.Credentials.Id);
         
         if (credential is null)
         {
@@ -590,7 +590,7 @@ public class UserFunctions
             return (null, null, null, []);
         }
 
-        var primaryEmailAddress = pureserviceUsers.Linked!.EmailAddresses!.Find(e => e.Id == pureserviceUser.Links.EmailAddress.Id);
+        var primaryEmailAddress = pureserviceUsers.Linked!.EmailAddresses!.Find(emailAddress => emailAddress.Id == pureserviceUser.Links.EmailAddress.Id);
 
         if (primaryEmailAddress is null)
         {
@@ -600,7 +600,7 @@ public class UserFunctions
         }
             
         var primaryPhoneNumber = pureserviceUser.Links.PhoneNumber is not null
-            ? pureserviceUsers.Linked!.PhoneNumbers!.Find(p => p.Id == pureserviceUser.Links.PhoneNumber.Id)
+            ? pureserviceUsers.Linked!.PhoneNumbers!.Find(phone => phone.Id == pureserviceUser.Links.PhoneNumber.Id)
             : null;
 
         var phoneNumberIds = pureserviceUser.Links.PhoneNumbers?.Ids ?? [];

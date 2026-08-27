@@ -104,8 +104,8 @@ public class TicketFunctionsTests
         Assert.IsType<BadRequestObjectResult>(result);
         
         await _pureserviceUserService.Received(1).GetUserByEmailAddress(Arg.Is(payload.User.EmailAddress));
-        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Is(user.Id), Arg.Is<List<(string PropertyName, (string? StringValue, int? IntValue, bool? BoolValue) PropertyValue)>>(l =>
-            l.Count == 1 && l[0].PropertyName == "disabled" && l[0].PropertyValue.StringValue == null && l[0].PropertyValue.IntValue == null && l[0].PropertyValue.BoolValue == false));
+        await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Is(user.Id), Arg.Is<List<(string PropertyName, (string? StringValue, int? IntValue, bool? BoolValue) PropertyValue)>>(basicUserPropertiesToUpdate =>
+            basicUserPropertiesToUpdate.Count == 1 && basicUserPropertiesToUpdate[0].PropertyName == "disabled" && basicUserPropertiesToUpdate[0].PropertyValue.StringValue == null && basicUserPropertiesToUpdate[0].PropertyValue.IntValue == null && basicUserPropertiesToUpdate[0].PropertyValue.BoolValue == false));
         
         await _pureservicePhoneNumberService.DidNotReceive().AddNewPhoneNumber(Arg.Any<string>(), Arg.Any<PhoneNumberType>());
         await _pureserviceEmailAddressService.DidNotReceive().AddNewEmailAddress(Arg.Any<string>());

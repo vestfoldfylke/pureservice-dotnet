@@ -381,7 +381,7 @@ public class PureserviceUserService : IPureserviceUserService
             return false;
         }
 
-        var propertyNames = propertiesToUpdate.Select(p => p.PropertyName);
+        var propertyNames = propertiesToUpdate.Select(property => property.PropertyName);
 
         _logger.LogInformation("Updating basic PropertyNames {@PropertyNames} on UserId {UserId}", propertyNames, userId);
         var result = await _pureserviceCaller.PatchAsync($"{BasePath}/{userId}", payload);
@@ -414,7 +414,7 @@ public class PureserviceUserService : IPureserviceUserService
             return false;
         }
         
-        var propertyNames = propertiesToUpdate.Select(p => p.PropertyName);
+        var propertyNames = propertiesToUpdate.Select(property => property.PropertyName);
 
         _logger.LogInformation("Updating company PropertyNames {@PropertyNames} on UserId {UserId}", propertyNames, userId);
         var result = await _pureserviceCaller.PatchAsync($"{BasePath}/{userId}", payload);
@@ -445,7 +445,7 @@ public class PureserviceUserService : IPureserviceUserService
             payload.Add("companyLocationId", locationId.Value);
         }
         
-        var propertyNames = payload.Select(p => p.Key);
+        var propertyNames = payload.Select(kvp => kvp.Key);
         
         _logger.LogInformation("Updating company PropertyNames {PropertyNames} on UserId {UserId}", propertyNames, userId);
         var result = await _pureserviceCaller.PatchAsync($"{BasePath}/{userId}", payload);
@@ -595,11 +595,11 @@ public class PureserviceUserService : IPureserviceUserService
     private (bool Update, Company? Company, string? Name) GetCompany(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies)
     {
         var company = pureserviceUser.CompanyId.HasValue
-            ? companies.Find(c => c.Id == pureserviceUser.CompanyId.Value)
+            ? companies.Find(company => company.Id == pureserviceUser.CompanyId.Value)
             : null;
         
         var wantedCompany = entraUser.CompanyName is not null
-            ? companies.Find(c => c.Name.Equals(entraUser.CompanyName, StringComparison.OrdinalIgnoreCase))
+            ? companies.Find(comp => comp.Name.Equals(entraUser.CompanyName, StringComparison.OrdinalIgnoreCase))
             : null;
         
         if (company is null)
@@ -653,11 +653,11 @@ public class PureserviceUserService : IPureserviceUserService
         }
         
         var department = pureserviceUser.CompanyDepartmentId.HasValue
-            ? companyDepartments.Find(d => d.Id == pureserviceUser.CompanyDepartmentId.Value && d.CompanyId == company.Id)
+            ? companyDepartments.Find(companyDepartment => companyDepartment.Id == pureserviceUser.CompanyDepartmentId.Value && companyDepartment.CompanyId == company.Id)
             : null;
         
         var wantedDepartment = entraUser.Department is not null
-            ? companyDepartments.Find(d => d.Name.Equals(entraUser.Department, StringComparison.OrdinalIgnoreCase) && d.CompanyId == company.Id)
+            ? companyDepartments.Find(companyDepartment => companyDepartment.Name.Equals(entraUser.Department, StringComparison.OrdinalIgnoreCase) && companyDepartment.CompanyId == company.Id)
             : null;
         
         if (department is null)
@@ -713,11 +713,11 @@ public class PureserviceUserService : IPureserviceUserService
         }
         
         var location = pureserviceUser.CompanyLocationId.HasValue
-            ? companyLocations.Find(l => l.Id == pureserviceUser.CompanyLocationId.Value && l.CompanyId == company.Id)
+            ? companyLocations.Find(companyLocation => companyLocation.Id == pureserviceUser.CompanyLocationId.Value && companyLocation.CompanyId == company.Id)
             : null;
         
         var wantedLocation = entraUser.OfficeLocation is not null
-            ? companyLocations.Find(l => l.Name.Equals(entraUser.OfficeLocation, StringComparison.OrdinalIgnoreCase) && l.CompanyId == company.Id)
+            ? companyLocations.Find(companyLocation => companyLocation.Name.Equals(entraUser.OfficeLocation, StringComparison.OrdinalIgnoreCase) && companyLocation.CompanyId == company.Id)
             : null;
         
         if (location is null)
@@ -773,9 +773,9 @@ public class PureserviceUserService : IPureserviceUserService
         }
 
         var property = typeof(User).GetProperties()
-            .FirstOrDefault(p => p.GetCustomAttributes(typeof(System.Text.Json.Serialization.JsonPropertyNameAttribute), false)
+            .FirstOrDefault(propertyInfo => propertyInfo.GetCustomAttributes(typeof(System.Text.Json.Serialization.JsonPropertyNameAttribute), false)
                 .Cast<System.Text.Json.Serialization.JsonPropertyNameAttribute>()
-                .Any(attr => attr.Name == customFieldName));
+                .Any(jsonPropertyNameAttribute => jsonPropertyNameAttribute.Name == customFieldName));
 
         if (property is null)
         {

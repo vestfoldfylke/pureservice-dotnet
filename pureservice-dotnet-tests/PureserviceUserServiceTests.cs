@@ -86,7 +86,7 @@ public class PureserviceUserServiceTests
             CreatedById = 1
         };
 
-        _pureserviceCaller.PostAsync<User>(Arg.Is<string>(s => s.StartsWith("user")), Arg.Any<object>())
+        _pureserviceCaller.PostAsync<User>(Arg.Is<string>(str => str.StartsWith("user")), Arg.Any<object>())
             .Returns(newPureserviceUser);
         
         var userList = await _service.CreateNewUser(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId, userType);
@@ -148,8 +148,8 @@ public class PureserviceUserServiceTests
         };
 
         _pureserviceCaller.PostAsync<User>(
-            Arg.Is<string>(s => s.StartsWith("user")),
-            Arg.Is<object>(o => HasPayloadPhoneNumber(o, hasPhoneNumber))
+            Arg.Is<string>(str => str.StartsWith("user")),
+            Arg.Is<object>(obj => HasPayloadPhoneNumber(obj, hasPhoneNumber))
         ).Returns(newPureserviceUser);
         
         var userList = await _service.CreateNewUser(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId, userType);
@@ -177,7 +177,7 @@ public class PureserviceUserServiceTests
         
         const string userType = "Biz";
 
-        _pureserviceCaller.PostAsync<User>(Arg.Is<string>(s => s.StartsWith("user")), Arg.Any<object>())
+        _pureserviceCaller.PostAsync<User>(Arg.Is<string>(str => str.StartsWith("user")), Arg.Any<object>())
             .ReturnsNull();
         
         var userList = await _service.CreateNewUser(entraUser, null, companyId, physicalAddressId, phoneNumberId, emailAddressId, userType);

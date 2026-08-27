@@ -66,7 +66,7 @@ public class PureserviceEmailAddressService : IPureserviceEmailAddressService
         {
             if (result.Emailaddresses.Length > 0)
             {
-                _logger.LogWarning("EmailAddress {EmailAddress} already exists in Pureservice on UserId(s) {UserId}", emailAddress, string.Join(", ", result.Emailaddresses.Select(e => e.UserId)));
+                _logger.LogWarning("EmailAddress {EmailAddress} already exists in Pureservice on UserId(s) {UserId}", emailAddress, string.Join(", ", result.Emailaddresses.Select(email => email.UserId)));
                 return true;
             }
             
