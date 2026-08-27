@@ -6,44 +6,50 @@
 
 <b>All properties are kept in sync as long as the user is enabled in Entra ID. When a user is disabled in Entra ID, only the `disabled` property is kept in sync (set to true in Pureservice). When a user is re-enabled in Entra ID, all properties are kept in sync again.</b>
 
-| Property in Pureservice | Property in Source | Description                                                       | Category     | Type   | Default Value |
-|-------------------------|--------------------|-------------------------------------------------------------------|--------------|--------|---------------|
-| firstName               | givenName          | First name                                                        | basic        | string | null          |
-| lastName                | surname            | Last name                                                         | basic        | string | null          |
-| title                   | jobTitle           | Job title                                                         | basic        | string | null          |
-| managerId               | manager.id         | Manager ID for Pureservice user                                   | basic        | int    | null          |
-| companyId               | companyName        | Company name                                                      | company      | int    | null          |
-| companyDepartmentId     | department         | Company department                                                | company      | int    | null          |
-| companyLocationId       | officeLocation     | Company location                                                  | company      | int    | null          |
-| emailAddressId          | mail               | Email address                                                     | emailaddress | int    | null          |
-| phoneNumberId           | csa.mobile         | Mobile phone number                                               | phonenumber  | int    | null          |
-| cf_1 (Brukertype)       | csa.brukertype     | Custom field 1 (set to Brukertype from Custom Security Attribute) | customfield  | string | null          |
-| disabled                | accountEnabled     | Disabled                                                          | basic        | int    | false         |
-| languageId              | preferredLanguage  | Language (set to Norwegian for now)                               | basic        | int    | Norwegian     |
-| role                    |                    | Role (UserRole) (only set on creation)                            | basic        | int    | Sluttbruker   |
-| importUniqueKey         | id                 | Unique key for import (only set on creation)                      | basic        | int    | null          |
-| username                | userPrincipalName  | Username (update does not work for users with role Administrator) | basic        | int    | null          |
+<b>If a user leaves, the user in Pureservice is disabled but kept. If the user was out for longer than the retention periode in Entra, and the user joins again, the user has a new Entra user with a new ObjectId.<br/>
+If the user has the same `userPrincipalName` on the new Entra user, and a Pureservice user is found with this `userPrincipalName` which also is `disabled`, the `importUniqueKey` on this Pureservice user will be set to the new Entra user ObjectId</b>
+
+| Property in Pureservice | Property in Source | Description                                                                                                           | Category     | Type   | Default Value |
+|-------------------------|--------------------|-----------------------------------------------------------------------------------------------------------------------|--------------|--------|---------------|
+| firstName               | givenName          | First name                                                                                                            | basic        | string | null          |
+| lastName                | surname            | Last name                                                                                                             | basic        | string | null          |
+| title                   | jobTitle           | Job title                                                                                                             | basic        | string | null          |
+| managerId               | manager.id         | Manager ID for Pureservice user                                                                                       | basic        | int    | null          |
+| companyId               | companyName        | Company name                                                                                                          | company      | int    | null          |
+| companyDepartmentId     | department         | Company department                                                                                                    | company      | int    | null          |
+| companyLocationId       | officeLocation     | Company location                                                                                                      | company      | int    | null          |
+| emailAddressId          | mail               | Email address                                                                                                         | emailaddress | int    | null          |
+| phoneNumberId           | csa.mobile         | Mobile phone number                                                                                                   | phonenumber  | int    | null          |
+| cf_1 (Brukertype)       | csa.brukertype     | Custom field 1 (set to Brukertype from Custom Security Attribute)                                                     | customfield  | string | null          |
+| disabled                | accountEnabled     | Disabled                                                                                                              | basic        | int    | false         |
+| languageId              | preferredLanguage  | Language (set to Norwegian for now)                                                                                   | basic        | int    | Norwegian     |
+| role                    |                    | Role (UserRole) (only set on creation)                                                                                | basic        | int    | Sluttbruker   |
+| importUniqueKey         | id                 | Unique key for import (added on create, updated only when userPrincipalName matches and Pureservice user is disabled) | basic        | int    | null          |
+| username                | userPrincipalName  | Username (update does not work for users with role Administrator)                                                     | basic        | int    | null          |
 
 ### Properties handled on students from `Entra ID`
 
 <b>All properties are kept in sync as long as the user is enabled in Entra ID. When a user is disabled in Entra ID, only the `disabled` property is kept in sync (set to true in Pureservice). When a user is re-enabled in Entra ID, all properties are kept in sync again.</b>
 
-| Property in Pureservice | Property in Source | Description                                                       | Category     | Type   | Default Value |
-|-------------------------|--------------------|-------------------------------------------------------------------|--------------|--------|---------------|
-| firstName               | givenName          | First name                                                        | basic        | string | null          |
-| lastName                | surname            | Last name                                                         | basic        | string | null          |
-| title                   | jobTitle           | Job title                                                         | basic        | string | null          |
-| companyId               | companyName        | Company name                                                      | company      | int    | null          |
-| companyDepartmentId     | department         | Company department                                                | company      | int    | null          |
-| companyLocationId       | officeLocation     | Company location                                                  | company      | int    | null          |
-| emailAddressId          | mail               | Email address                                                     | emailaddress | int    | null          |
-| phoneNumberId           | csa.mobile         | Mobile phone number                                               | phonenumber  | int    | null          |
-| cf_1 (Brukertype)       | csa.brukertype     | Custom field 1 (set to Brukertype from Custom Security Attribute) | customfield  | string | null          |
-| disabled                | accountEnabled     | Disabled                                                          | basic        | int    | false         |
-| languageId              | preferredLanguage  | Language (set to Norwegian for now)                               | basic        | int    | Norwegian     |
-| role                    |                    | Role (UserRole) (only set on creation)                            | basic        | int    | Sluttbruker   |
-| importUniqueKey         | id                 | Unique key for import (only set on creation)                      | basic        | int    | null          |
-| username                | userPrincipalName  | Username (update does not work for users with role Administrator) | basic        | int    | null          |
+<b>If a user leaves, the user in Pureservice is disabled but kept. If the user was out for longer than the retention periode in Entra, and the user joins again, the user has a new Entra user with a new ObjectId.<br/>
+If the user has the same `userPrincipalName` on the new Entra user, and a Pureservice user is found with this `userPrincipalName` which also is `disabled`, the `importUniqueKey` on this Pureservice user will be set to the new Entra user ObjectId</b>
+
+| Property in Pureservice | Property in Source | Description                                                                                                           | Category     | Type   | Default Value |
+|-------------------------|--------------------|-----------------------------------------------------------------------------------------------------------------------|--------------|--------|---------------|
+| firstName               | givenName          | First name                                                                                                            | basic        | string | null          |
+| lastName                | surname            | Last name                                                                                                             | basic        | string | null          |
+| title                   | jobTitle           | Job title                                                                                                             | basic        | string | null          |
+| companyId               | companyName        | Company name                                                                                                          | company      | int    | null          |
+| companyDepartmentId     | department         | Company department                                                                                                    | company      | int    | null          |
+| companyLocationId       | officeLocation     | Company location                                                                                                      | company      | int    | null          |
+| emailAddressId          | mail               | Email address                                                                                                         | emailaddress | int    | null          |
+| phoneNumberId           | csa.mobile         | Mobile phone number                                                                                                   | phonenumber  | int    | null          |
+| cf_1 (Brukertype)       | csa.brukertype     | Custom field 1 (set to Brukertype from Custom Security Attribute)                                                     | customfield  | string | null          |
+| disabled                | accountEnabled     | Disabled                                                                                                              | basic        | int    | false         |
+| languageId              | preferredLanguage  | Language (set to Norwegian for now)                                                                                   | basic        | int    | Norwegian     |
+| role                    |                    | Role (UserRole) (only set on creation)                                                                                | basic        | int    | Sluttbruker   |
+| importUniqueKey         | id                 | Unique key for import (added on create, updated only when userPrincipalName matches and Pureservice user is disabled) | basic        | int    | null          |
+| username                | userPrincipalName  | Username (update does not work for users with role Administrator)                                                     | basic        | int    | null          |
 
 ## CreateTicket method
 

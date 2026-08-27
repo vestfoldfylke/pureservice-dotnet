@@ -140,7 +140,7 @@ public class PureserviceCaller : IPureserviceCaller
     {
         var first = DateTime.Now.AddMinutes(-1);
         var last = DateTime.Now;
-        var requestCountLastMinute = _requestTimestamps.Count(dt => dt >= first && dt <= last);
+        var requestCountLastMinute = _requestTimestamps.Count(dateTime => dateTime >= first && dateTime <= last);
         
         return (requestCountLastMinute + expectedRequestCount > _maxRequestsPerMinute,
             requestCountLastMinute,
@@ -535,7 +535,7 @@ public class PureserviceCaller : IPureserviceCaller
             isSuccess = response.IsSuccessStatusCode;
             
             // Clean up old timestamps
-            _requestTimestamps.RemoveAll(dt => dt < DateTime.Now.AddMinutes(-15));
+            _requestTimestamps.RemoveAll(dateTime => dateTime < DateTime.Now.AddMinutes(-15));
             
             return (response, content, statusCode, isSuccess);
         }
