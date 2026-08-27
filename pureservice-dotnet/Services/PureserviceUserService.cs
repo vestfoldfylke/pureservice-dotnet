@@ -269,6 +269,11 @@ public class PureserviceUserService : IPureserviceUserService
         {
             propertiesToUpdate.Add((_userTypeCustomField, (entraUserType, null, null)));
         }
+
+        if (pureserviceUser.ImportUniqueKey != entraUser.Id)
+        {
+            propertiesToUpdate.Add(("importUniqueKey", (entraUser.Id, null, null)));
+        }
         
         return propertiesToUpdate;
     }

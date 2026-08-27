@@ -103,6 +103,36 @@ public class UserFunctions
                         continue;
                     }
 
+                    var pureserviceUsersWithSameUserPrincipalName = GetPureserviceUsersWithSameUserPrincipalName(pureserviceUsers, entraUser);
+
+                    if (pureserviceUsersWithSameUserPrincipalName.Count > 1)
+                    {
+                        // this shouldn't happen...
+                        _logger.LogError("Found {UserCount} pureservice users with EmailAddress {EmailAddress}. How is this possible?", pureserviceUsersWithSameUserPrincipalName.Count, entraUser.Mail);
+                        synchronizationResult.UserErrorCount++;
+                        continue;
+                    }
+
+                    if (pureserviceUsersWithSameUserPrincipalName.Count == 1)
+                    {
+                        var pureserviceUserWithSameUserPrincipalName = pureserviceUsersWithSameUserPrincipalName.First();
+
+                        var userUpdateResult = await HandleUpdateUser(pureserviceUserWithSameUserPrincipalName, entraUser, pureserviceManagerUser, companies, departments, locations, pureserviceUsers,
+                            synchronizationResult);
+
+                        if ((userUpdateResult.BasicPropertiesUpdated?.Any(p => p.propertyName == "importUniqueKey") ?? false) && synchronizationResult.UserBasicPropertiesUpdatedCount > 0)
+                        {
+                            synchronizationResult.UserImportUniqueKeyUpdatedCount++;
+                            _logger.LogWarning(
+                                "Pureservice user with UserId {UserId} has gotten their ImportUniqueKey changed from '{PreviousImportUniqueKey}' to '{NewImportUniqueKey}' to align with Entra user with Id {EntraId}",
+                                pureserviceUserWithSameUserPrincipalName.Id, pureserviceUserWithSameUserPrincipalName.ImportUniqueKey, entraUser.Id, entraUser.Id);
+                            _metrics.Count($"{Constants.MetricsPrefix}_ImportUniqueKeyUpdated", "Number of users where importUniqueKey got updated",
+                                (Constants.MetricsResultLabelName, Constants.MetricsResultSuccessLabelValue));
+                        }
+
+                        continue;
+                    }
+
                     var company = companies.Find(c => c.Name.Equals(entraUser.CompanyName, StringComparison.OrdinalIgnoreCase));
                     if (company is null)
                     {
@@ -131,26 +161,8 @@ public class UserFunctions
                     await CreateUser(entraUser, pureserviceManagerUser, company.Id, department, location, synchronizationResult);
                     continue;
                 }
-                
-                using (LogContext.PushProperty("UserId", pureserviceUser.Id))
-                {
-                    if (entraUser.AccountEnabled.HasValue && !entraUser.AccountEnabled.Value && pureserviceUser.Disabled)
-                    {
-                        _logger.LogDebug("User with UserId {UserId} is disabled in Pureservice and Entra user with EntraId {EntraId} is disabled in Entra. Skipping further Pureservice checking/updating", pureserviceUser.Id, entraUser.Id);
-                        synchronizationResult.UserDisabledCount++;
-                        continue;
-                    }
-                    
-                    var (credential, primaryEmailAddress, primaryPhoneNumber, phoneNumberIds) = GetPureserviceUserContactInfo(pureserviceUser, pureserviceUsers, synchronizationResult);
-                    if (credential is null || primaryEmailAddress is null)
-                    {
-                        continue;
-                    }
-                    
-                    var phoneNumbers = pureserviceUsers.Linked.PhoneNumbers.Where(p => phoneNumberIds.Contains(p.Id)).ToList();
 
-                    await UpdateUser(pureserviceUser, entraUser, credential, primaryEmailAddress, primaryPhoneNumber, phoneNumbers, pureserviceManagerUser, companies, departments, locations, synchronizationResult);
-                }
+                await HandleUpdateUser(pureserviceUser, entraUser, pureserviceManagerUser, companies, departments, locations, pureserviceUsers, synchronizationResult);
             }
         }
 
@@ -250,9 +262,11 @@ public class UserFunctions
         }
     }
     
-    public async Task UpdateUser(User pureserviceUser, Microsoft.Graph.Models.User entraUser, Credential credential, EmailAddress emailAddress, PhoneNumber? phoneNumber, List<PhoneNumber> phoneNumbers,
+    public async Task<UserUpdateResult> UpdateUser(User pureserviceUser, Microsoft.Graph.Models.User entraUser, Credential credential, EmailAddress emailAddress, PhoneNumber? phoneNumber, List<PhoneNumber> phoneNumbers,
         User? pureserviceManagerUser, List<Company> companies, List<CompanyDepartment> companyDepartments, List<CompanyLocation> companyLocations, SynchronizationResult synchronizationResult)
     {
+        var userUpdateResult = new UserUpdateResult();
+
         // BasicProperties, Username, CompanyProperties, EmailAddress, PhoneNumber (maybe add) and PhoneNumber (maybe set as default)
         // BasicProperties, Username, CompanyProperties, EmailAddress, PhoneNumber (maybe update) and PhoneNumber (maybe set as default)
         // BasicProperties, Username, CompanyProperties, EmailAddress, PhoneNumber (maybe update)
@@ -263,7 +277,7 @@ public class UserFunctions
             if (!secondsToWait.HasValue)
             {
                 _logger.LogWarning("Throttling in Pureservice API detected. Skipping user update this sweep. Request count last minute: {RequestCountLastMinute}", requestCountLastMinute);
-                return;
+                return userUpdateResult;
             }
             
             _logger.LogWarning("Throttling in Pureservice API detected. Waiting {SecondsToWait} seconds before updating user. Request count last minute: {RequestCountLastMinute}",
@@ -293,7 +307,9 @@ public class UserFunctions
             await _pureserviceUserService.UpdateBasicProperties(pureserviceUser.Id, basicPropertiesToUpdate);
             _logger.LogInformation("User with UserId {UserId} has been disabled in Pureservice to match Entra user with EntraId {EntraId}. No other properties were updated to keep user data intact", pureserviceUser.Id, entraUser.Id);
             synchronizationResult.UserBasicPropertiesUpdatedCount++;
-            return;
+            userUpdateResult.BasicPropertiesUpdated = basicPropertiesToUpdate;
+            
+            return userUpdateResult;
         }
 
         var usernameUpdate = _pureserviceUserService.NeedsUsernameUpdate(credential, entraUser);
@@ -311,12 +327,13 @@ public class UserFunctions
         {
             synchronizationResult.UserUpToDateCount++;
             _logger.LogDebug("User with UserId {UserId} is up to date", pureserviceUser.Id);
-            return;
+            return userUpdateResult;
         }
         
         if (basicPropertiesToUpdate.Count > 0 && await _pureserviceUserService.UpdateBasicProperties(pureserviceUser.Id, basicPropertiesToUpdate))
         {
             synchronizationResult.UserBasicPropertiesUpdatedCount++;
+            userUpdateResult.BasicPropertiesUpdated = basicPropertiesToUpdate;
         }
         
         if (usernameUpdate.Update && await _pureserviceUserService.UpdateUsername(pureserviceUser.Id, credential.Id, usernameUpdate.Username!))
@@ -403,7 +420,7 @@ public class UserFunctions
 
         if (!phoneNumberUpdate.Update)
         {
-            return;
+            return userUpdateResult;
         }
         
         if (phoneNumber is null)
@@ -411,7 +428,7 @@ public class UserFunctions
             if (phoneNumberUpdate.PhoneNumber is null)
             {
                 _logger.LogError("No phone number exists for Pureservice UserId {UserId} and no phone number found in Entra on EntraId {EntraId}. Cannot add empty phone number", pureserviceUser.Id, entraUser.Id);
-                return;
+                return userUpdateResult;
             }
             
             phoneNumber = phoneNumbers.Find(p => p.Number == phoneNumberUpdate.PhoneNumber);
@@ -420,37 +437,98 @@ public class UserFunctions
                 if (await _pureserviceUserService.RegisterPhoneNumberAsDefault(pureserviceUser.Id, phoneNumber.Id))
                 {
                     synchronizationResult.UserPhoneNumberUpdatedCount++;
-                    return;
+                    return userUpdateResult;
                 }
 
                 synchronizationResult.UserErrorCount++;
-                return;
+                return userUpdateResult;
             }
 
             var phoneNumberResult = await _pureservicePhoneNumberService.AddNewPhoneNumberAndLinkToUser(phoneNumberUpdate.PhoneNumber, PhoneNumberType.Mobile, pureserviceUser.Id);
             if (phoneNumberResult is null)
             {
                 synchronizationResult.UserErrorCount++;
-                return;
+                return userUpdateResult;
             }
 
             if (await _pureserviceUserService.RegisterPhoneNumberAsDefault(pureserviceUser.Id, phoneNumberResult.Id))
             {
                 synchronizationResult.UserPhoneNumberUpdatedCount++;
-                return;
+                return userUpdateResult;
             }
 
             synchronizationResult.UserErrorCount++;
-            return;
+            return userUpdateResult;
         }
 
         if (await _pureservicePhoneNumberService.UpdatePhoneNumber(phoneNumber.Id, phoneNumberUpdate.PhoneNumber, PhoneNumberType.Mobile, pureserviceUser.Id))
         {
             synchronizationResult.UserPhoneNumberUpdatedCount++;
-            return;
+            return userUpdateResult;
         }
         
         synchronizationResult.UserErrorCount++;
+
+        return userUpdateResult;
+    }
+    
+    private List<User> GetPureserviceUsersWithSameUserPrincipalName(UserList pureserviceUsers, Microsoft.Graph.Models.User entraUser)
+    {
+        if (pureserviceUsers.Linked?.EmailAddresses is null)
+        {
+            _logger.LogError("Expected linked results were not found in user list");
+            throw new InvalidOperationException("Expected linked results were not found in user list");
+        }
+
+        return pureserviceUsers.Users
+            .Where(u => u.Disabled)
+            .Where(u =>
+                {
+                    if (string.IsNullOrEmpty(u.ImportUniqueKey))
+                    {
+                        return false;
+                    }
+
+                    var pureserviceEmailAddress = pureserviceUsers.Linked.EmailAddresses.Find(e => e.Id == u.EmailAddressId);
+                    if (pureserviceEmailAddress is null)
+                    {
+                        return false;
+                    }
+
+                    return string.Compare(entraUser.UserPrincipalName, pureserviceEmailAddress.Email, StringComparison.OrdinalIgnoreCase) == 0 &&
+                           string.Compare(entraUser.Id, u.ImportUniqueKey, StringComparison.OrdinalIgnoreCase) != 0;
+                })
+            .ToList();
+    }
+
+    private async Task<UserUpdateResult> HandleUpdateUser(User pureserviceUser, Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser, List<Company> companies, List<CompanyDepartment> departments,
+        List<CompanyLocation> locations, UserList pureserviceUsers, SynchronizationResult synchronizationResult)
+    {
+        using (LogContext.PushProperty("UserId", pureserviceUser.Id))
+        {
+            if (entraUser.AccountEnabled.HasValue && !entraUser.AccountEnabled.Value && pureserviceUser.Disabled)
+            {
+                _logger.LogDebug("User with UserId {UserId} is disabled in Pureservice and Entra user with EntraId {EntraId} is disabled in Entra. Skipping further Pureservice checking/updating", pureserviceUser.Id, entraUser.Id);
+                synchronizationResult.UserDisabledCount++;
+                return new UserUpdateResult();
+            }
+
+            var (credential, primaryEmailAddress, primaryPhoneNumber, phoneNumberIds) = GetPureserviceUserContactInfo(pureserviceUser, pureserviceUsers, synchronizationResult);
+            if (credential is null || primaryEmailAddress is null)
+            {
+                return new UserUpdateResult();
+            }
+
+            if (pureserviceUsers.Linked?.Credentials is null || pureserviceUsers.Linked?.EmailAddresses is null || pureserviceUsers.Linked?.PhoneNumbers is null)
+            {
+                _logger.LogError("Expected linked results were not found in user list");
+                throw new InvalidOperationException("Expected linked results were not found in user list");
+            }
+
+            var phoneNumbers = pureserviceUsers.Linked.PhoneNumbers.Where(p => phoneNumberIds.Contains(p.Id)).ToList();
+
+            return await UpdateUser(pureserviceUser, entraUser, credential, primaryEmailAddress, primaryPhoneNumber, phoneNumbers, pureserviceManagerUser, companies, departments, locations, synchronizationResult);
+        }
     }
 
     private (User? pureserviceUser, User? pureserviceManagerUser, bool skipUser) GetPureserviceUserInfo(Microsoft.Graph.Models.User entraUser, UserList pureserviceUsers,
