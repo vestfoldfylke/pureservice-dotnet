@@ -96,69 +96,7 @@ public class UserFunctions
 
                 if (pureserviceUser is null)
                 {
-                    if (entraUser.AccountEnabled.HasValue && !entraUser.AccountEnabled.Value)
-                    {
-                        _logger.LogInformation("Entra user with Id {EntraId} is disabled in Entra. Skipping creation in Pureservice", entraUser.Id);
-                        synchronizationResult.UserDisabledCount++;
-                        continue;
-                    }
-
-                    var pureserviceUsersWithSameUserPrincipalName = GetPureserviceUsersWithSameUserPrincipalName(pureserviceUsers, entraUser);
-
-                    if (pureserviceUsersWithSameUserPrincipalName.Count > 1)
-                    {
-                        // this shouldn't happen...
-                        _logger.LogError("Found {UserCount} pureservice users with EmailAddress {EmailAddress}. How is this possible?", pureserviceUsersWithSameUserPrincipalName.Count, entraUser.Mail);
-                        synchronizationResult.UserErrorCount++;
-                        continue;
-                    }
-
-                    if (pureserviceUsersWithSameUserPrincipalName.Count == 1)
-                    {
-                        var pureserviceUserWithSameUserPrincipalName = pureserviceUsersWithSameUserPrincipalName.First();
-
-                        var userUpdateResult = await HandleUpdateUser(pureserviceUserWithSameUserPrincipalName, entraUser, pureserviceManagerUser, companies, departments, locations, pureserviceUsers,
-                            synchronizationResult);
-
-                        if ((userUpdateResult.BasicPropertiesUpdated?.Any(property => property.propertyName == "importUniqueKey") ?? false) && synchronizationResult.UserBasicPropertiesUpdatedCount > 0)
-                        {
-                            synchronizationResult.UserImportUniqueKeyUpdatedCount++;
-                            _logger.LogWarning(
-                                "Pureservice user with UserId {UserId} has gotten their ImportUniqueKey changed from '{PreviousImportUniqueKey}' to '{NewImportUniqueKey}' to align with Entra user with Id {EntraId}",
-                                pureserviceUserWithSameUserPrincipalName.Id, pureserviceUserWithSameUserPrincipalName.ImportUniqueKey, entraUser.Id, entraUser.Id);
-                            _metrics.Count($"{Constants.MetricsPrefix}_ImportUniqueKeyUpdated", "Number of users where importUniqueKey got updated",
-                                (Constants.MetricsResultLabelName, Constants.MetricsResultSuccessLabelValue));
-                        }
-
-                        continue;
-                    }
-
-                    var company = companies.Find(company => company.Name.Equals(entraUser.CompanyName, StringComparison.OrdinalIgnoreCase));
-                    if (company is null)
-                    {
-                        company = await _pureserviceCompanyService.AddCompany(entraUser.CompanyName!);
-                        if (company is null)
-                        {
-                            _logger.LogError("CompanyName {CompanyName} for new Pureservice user with EntraId {EntraId} not created in Pureservice. User will not be created", entraUser.CompanyName,
-                                entraUser.Id);
-                            synchronizationResult.CompanyMissingInPureserviceCount++;
-                            continue;
-                        }
-                        
-                        companies.Add(company);
-                    }
-
-                    // NOTE: If department isn't found because company was just created, it will be created in the next sweep when user will be updated
-                    var department = entraUser.Department is not null
-                        ? departments.Find(department => department.Name.Equals(entraUser.Department, StringComparison.OrdinalIgnoreCase) && department.CompanyId == company.Id)
-                        : null;
-
-                    // NOTE: If location isn't found because company was just created, it will be created in the next sweep when user will be updated
-                    var location = entraUser.OfficeLocation is not null
-                        ? locations.Find(location => location.Name.Equals(entraUser.OfficeLocation, StringComparison.OrdinalIgnoreCase) && location.CompanyId == company.Id)
-                        : null;
-
-                    await CreateUser(entraUser, pureserviceManagerUser, company.Id, department, location, synchronizationResult);
+                    await HandleNullPureserviceUser(entraUser, pureserviceManagerUser, pureserviceUsers, companies, departments, locations, synchronizationResult);
                     continue;
                 }
 
@@ -499,6 +437,74 @@ public class UserFunctions
                            string.Compare(entraUser.Id, user.ImportUniqueKey, StringComparison.OrdinalIgnoreCase) != 0;
                 })
             .ToList();
+    }
+
+    private async Task HandleNullPureserviceUser(Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser, UserList pureserviceUsers, List<Company> companies, List<CompanyDepartment> companyDepartments,
+        List<CompanyLocation> companyLocations, SynchronizationResult synchronizationResult)
+    {
+        if (entraUser.AccountEnabled.HasValue && !entraUser.AccountEnabled.Value)
+        {
+            _logger.LogInformation("Entra user with Id {EntraId} is disabled in Entra. Skipping creation in Pureservice", entraUser.Id);
+            synchronizationResult.UserDisabledCount++;
+            return;
+        }
+
+        var pureserviceUsersWithSameUserPrincipalName = GetPureserviceUsersWithSameUserPrincipalName(pureserviceUsers, entraUser);
+
+        if (pureserviceUsersWithSameUserPrincipalName.Count > 1)
+        {
+            // this shouldn't happen...
+            _logger.LogError("Found {UserCount} pureservice users with EmailAddress {EmailAddress}. How is this possible?", pureserviceUsersWithSameUserPrincipalName.Count, entraUser.Mail);
+            synchronizationResult.UserErrorCount++;
+            return;
+        }
+
+        if (pureserviceUsersWithSameUserPrincipalName.Count == 1)
+        {
+            var pureserviceUserWithSameUserPrincipalName = pureserviceUsersWithSameUserPrincipalName.First();
+
+            var userUpdateResult = await HandleUpdateUser(pureserviceUserWithSameUserPrincipalName, entraUser, pureserviceManagerUser, companies, companyDepartments, companyLocations, pureserviceUsers,
+                synchronizationResult);
+
+            if ((userUpdateResult.BasicPropertiesUpdated?.Any(property => property.propertyName == "importUniqueKey") ?? false) && synchronizationResult.UserBasicPropertiesUpdatedCount > 0)
+            {
+                synchronizationResult.UserImportUniqueKeyUpdatedCount++;
+                _logger.LogWarning(
+                    "Pureservice user with UserId {UserId} has gotten their ImportUniqueKey changed from '{PreviousImportUniqueKey}' to '{NewImportUniqueKey}' to align with Entra user with Id {EntraId}",
+                    pureserviceUserWithSameUserPrincipalName.Id, pureserviceUserWithSameUserPrincipalName.ImportUniqueKey, entraUser.Id, entraUser.Id);
+                _metrics.Count($"{Constants.MetricsPrefix}_ImportUniqueKeyUpdated", "Number of users where importUniqueKey got updated",
+                    (Constants.MetricsResultLabelName, Constants.MetricsResultSuccessLabelValue));
+            }
+
+            return;
+        }
+
+        var company = companies.Find(company => company.Name.Equals(entraUser.CompanyName, StringComparison.OrdinalIgnoreCase));
+        if (company is null)
+        {
+            company = await _pureserviceCompanyService.AddCompany(entraUser.CompanyName!);
+            if (company is null)
+            {
+                _logger.LogError("CompanyName {CompanyName} for new Pureservice user with EntraId {EntraId} not created in Pureservice. User will not be created", entraUser.CompanyName,
+                    entraUser.Id);
+                synchronizationResult.CompanyMissingInPureserviceCount++;
+                return;
+            }
+            
+            companies.Add(company);
+        }
+
+        // NOTE: If department isn't found because company was just created, it will be created in the next sweep when user will be updated
+        var department = entraUser.Department is not null
+            ? companyDepartments.Find(department => department.Name.Equals(entraUser.Department, StringComparison.OrdinalIgnoreCase) && department.CompanyId == company.Id)
+            : null;
+
+        // NOTE: If location isn't found because company was just created, it will be created in the next sweep when user will be updated
+        var location = entraUser.OfficeLocation is not null
+            ? companyLocations.Find(location => location.Name.Equals(entraUser.OfficeLocation, StringComparison.OrdinalIgnoreCase) && location.CompanyId == company.Id)
+            : null;
+
+        await CreateUser(entraUser, pureserviceManagerUser, company.Id, department, location, synchronizationResult);
     }
 
     private async Task<UserUpdateResult> HandleUpdateUser(User pureserviceUser, Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser, List<Company> companies, List<CompanyDepartment> departments,
