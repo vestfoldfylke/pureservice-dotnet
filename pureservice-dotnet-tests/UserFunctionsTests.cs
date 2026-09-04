@@ -3051,7 +3051,6 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserDisabledSinceOutOfSyncCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
-        Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
         _pureserviceCaller.Received(1).NeedsToWait(Arg.Any<int>());
         await _emailAddressService.Received(1).EmailAddressExists(Arg.Any<string>());
@@ -3135,7 +3134,6 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserDisabledSinceOutOfSyncCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
-        Assert.Equal(0, synchronizationResult.UserCreatedCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
         _pureserviceCaller.Received(1).NeedsToWait(Arg.Any<int>());
