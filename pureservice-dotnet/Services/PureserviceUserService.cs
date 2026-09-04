@@ -134,9 +134,11 @@ public class PureserviceUserService : IPureserviceUserService
         if (!includeSystemUsers)
         {
             var filter = queryString["filter"];
+            var roleFilter = $"role > {(int)UserRole.None} AND role < {(int)UserRole.System}";
+
             queryString["filter"] = string.IsNullOrEmpty(filter)
-                ? $"role > {(int)UserRole.None} AND role < {(int)UserRole.System}"
-                : $"{filter} AND role > {(int)UserRole.None} AND role < {(int)UserRole.System}";
+                ? roleFilter
+                : $"{filter} AND {roleFilter}";
         }
         
         if (entities != null)
