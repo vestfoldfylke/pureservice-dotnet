@@ -72,7 +72,9 @@ public class UserFunctions
         _logger.LogInformation("Retrieved {CompanyCount} companies, {DepartmentCount} departments and {LocationCount} locations from Pureservice", companies.Count, departments.Count, locations.Count);
         
         var synchronizationResult = new SynchronizationResult();
-        
+
+        _logger.LogInformation("Checking {EntraUserCount} entra users for updates", entraUsers.Count);
+
         // create or update users
         foreach (var entraUser in entraUsers)
         {
@@ -102,6 +104,55 @@ public class UserFunctions
 
                 await HandleUpdateUser(pureserviceUser, entraUser, pureserviceManagerUser, companies, departments, locations, pureserviceUsers, synchronizationResult);
             }
+        }
+
+        // check if any users should be disabled (not present in EntraId sync anymore)
+        var importedPureserviceUsers = pureserviceUsers.Users.Where(user => !string.IsNullOrEmpty(user.ImportUniqueKey) && !user.Disabled).ToArray();
+        _logger.LogInformation("Checking {PureserviceUserCount} enabled imported pureservice users if any is no longer in the sync and should be disabled", importedPureserviceUsers.Length);
+
+        foreach (var pureserviceUser in importedPureserviceUsers)
+        {
+            if (entraUsers.FindIndex(entraUser => entraUser.Id == pureserviceUser.ImportUniqueKey) > -1)
+            {
+                continue;
+            }
+            
+            var tempEntraUser = new Microsoft.Graph.Models.User
+            {
+                Id = pureserviceUser.ImportUniqueKey,
+                AccountEnabled = false,
+                GivenName = pureserviceUser.FirstName,
+                Surname = pureserviceUser.LastName,
+                JobTitle = pureserviceUser.Title
+            };
+
+            var credential = pureserviceUsers.Linked.Credentials?.Find(credential => credential.Id == pureserviceUser.CredentialsId) ?? new Credential
+            {
+                Username = pureserviceUser.FirstName,
+                Id = -1,
+                Created = DateTime.Now,
+                CreatedById = -1
+            };
+            if (credential.Id == -1)
+            {
+                _logger.LogWarning("Credential for pureservice user with Id {UserId} not found. Using a dummy Credential", pureserviceUser.Id);
+            }
+            
+            var emailAddress = pureserviceUsers.Linked.EmailAddresses?.Find(emailAddress => emailAddress.Id == pureserviceUser.EmailAddressId) ?? new EmailAddress
+            {
+                Email = pureserviceUser.FirstName,
+                Id = -1,
+                Created =  DateTime.Now,
+                CreatedById = -1
+            };
+            if (emailAddress.Id == -1)
+            {
+                _logger.LogWarning("EmailAddress for pureservice user with Id {UserId} not found. Using a dummy EmailAddress", pureserviceUser.Id);
+            }
+
+            await UpdateUser(pureserviceUser, tempEntraUser, credential, emailAddress, null, [], null, [], [], [], synchronizationResult);
+            _logger.LogInformation("User with Id {UserId} is no longer in the EntraId user sync and has been disabled in Pureservice. Pureservice ImportUniqueKey: {ImportUniqueKey}", pureserviceUser.Id, pureserviceUser.ImportUniqueKey);
+            synchronizationResult.UserDisabledSinceOutOfSyncCount++;
         }
 
         _logger.LogInformation("UserFunctions_Synchronize finished: {@SynchronizationResult}", synchronizationResult);

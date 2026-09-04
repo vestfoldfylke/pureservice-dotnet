@@ -978,6 +978,225 @@ public class UserFunctionsTests
         
         _metricsService.DidNotReceive().Count($"{Constants.MetricsPrefix}_ImportUniqueKeyUpdated", Arg.Any<string>(), Arg.Any<(string, string)>());
     }
+    
+    [Fact]
+    public async Task Synchronize_Should_Deactivate_NonSynced_User_And_Keep_Updating_Synced_Users()
+    {
+        var syncedEntraUser = new Microsoft.Graph.Models.User
+        {
+            Id = "1",
+            AccountEnabled = true,
+            CompanyName = "Foo",
+            GivenName = "42",
+            Surname = "43",
+            Mail = "foo1@bar.biz",
+            JobTitle = "Supperådgiver 1",
+            UserPrincipalName = "foo1@bar.biz"
+        };
+        
+        var credentialSyncedUser = new Credential
+        {
+            Id = 5,
+            Username = "foo1@bar.biz",
+            Created = DateTime.Now,
+            CreatedById = 3,
+            LoginCount = 0
+        };
+
+        var emailAddressSyncedUser = new EmailAddress
+        {
+            Id = 6,
+            Email = "foo1@bar.biz",
+            Created = DateTime.Now,
+            CreatedById = 3
+        };
+
+        var pureserviceUserSyncedUser = new User
+        {
+            FirstName = "1",
+            LastName = "1",
+            Title = "1",
+            Disabled = false,
+            Created = DateTime.Now,
+            CreatedById = 3,
+            FlushNotifications = false,
+            HighlightNotifications = false,
+            IsAnonymized = false,
+            IsSuperuser = false,
+            Role = UserRole.Agent,
+            Unavailable = false,
+            Id = 1,
+            ImportUniqueKey = syncedEntraUser.Id,
+            CredentialsId = credentialSyncedUser.Id,
+            EmailAddressId = emailAddressSyncedUser.Id,
+            Links = new Links
+            {
+                Credentials = new Link(credentialSyncedUser.Id, "Credential"),
+                EmailAddress =  new Link(emailAddressSyncedUser.Id, "Email")
+            }
+        };
+        
+        var credentialNonSyncedUser = new Credential
+        {
+            Id = 7,
+            Username = "foo2@bar.biz",
+            Created = DateTime.Now,
+            CreatedById = 3,
+            LoginCount = 0
+        };
+
+        var emailAddressNonSyncedUser = new EmailAddress
+        {
+            Id = 8,
+            Email = "foo2@bar.biz",
+            Created = DateTime.Now,
+            CreatedById = 3
+        };
+        
+        var pureserviceUserNonSyncedUser = new User
+        {
+            FirstName = "2",
+            LastName = "2",
+            Title = "2",
+            Disabled = false,
+            Created = DateTime.Now.AddDays(-30),
+            CreatedById = 3,
+            FlushNotifications = false,
+            HighlightNotifications = false,
+            IsAnonymized = false,
+            IsSuperuser = false,
+            Role = UserRole.Agent,
+            Unavailable = false,
+            Id = 2,
+            ImportUniqueKey = "2",
+            CredentialsId = credentialNonSyncedUser.Id,
+            EmailAddressId = emailAddressNonSyncedUser.Id,
+            Links = new Links
+            {
+                Credentials = new Link(credentialNonSyncedUser.Id, "Credential"),
+                EmailAddress =  new Link(emailAddressNonSyncedUser.Id, "Email")
+            }
+        };
+        
+        var pureserviceUserDisabledUser = new User
+        {
+            FirstName = "3",
+            LastName = "3",
+            Title = "3",
+            Disabled = true,
+            Created = DateTime.Now.AddDays(-30),
+            CreatedById = 3,
+            FlushNotifications = false,
+            HighlightNotifications = false,
+            IsAnonymized = false,
+            IsSuperuser = false,
+            Role = UserRole.Agent,
+            Unavailable = false,
+            Id = 3,
+            ImportUniqueKey = "3"
+        };
+        
+        var pureserviceNonImportedUser = new User
+        {
+            FirstName = "4",
+            LastName = "4",
+            Title = "4",
+            Disabled = false,
+            Created = DateTime.Now.AddDays(-30),
+            CreatedById = 3,
+            FlushNotifications = false,
+            HighlightNotifications = false,
+            IsAnonymized = false,
+            IsSuperuser = false,
+            Role = UserRole.Agent,
+            Unavailable = false,
+            Id = 4
+        };
+
+        const string userType = "Baz";
+        
+        _graphService.GetEmployees().Returns([syncedEntraUser]);
+        _graphService.GetStudents().Returns([]);
+
+        var pureserviceUsers = new List<User>
+        {
+            pureserviceUserSyncedUser,
+            pureserviceUserNonSyncedUser,
+            pureserviceUserDisabledUser,
+            pureserviceNonImportedUser
+        };
+
+        var pureserviceLinked = new Linked
+        {
+            Credentials = [credentialSyncedUser, credentialNonSyncedUser],
+            EmailAddresses = [emailAddressSyncedUser, emailAddressNonSyncedUser],
+            PhoneNumbers = []
+        };
+        
+        _pureserviceUserService.GetUsers(Arg.Any<string[]>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<bool>())
+            .Returns(new UserList(pureserviceUsers, pureserviceLinked));
+
+        _companyService.GetCompanies().Returns([]);
+        _companyService.GetDepartments().Returns([]);
+        _companyService.GetLocations().Returns([]);
+
+        _pureserviceCaller.NeedsToWait(Arg.Any<int>()).Returns((false, 0, null));
+
+        _graphService.GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityUserTypeAttributeName).Returns(userType);
+        _pureserviceUserService.NeedsBasicUpdate(pureserviceUserSyncedUser, Arg.Any<Microsoft.Graph.Models.User>(), null, false, userType).Returns(
+        [
+            ("firstName", (syncedEntraUser.GivenName, null, null)),
+            ("lastName", (syncedEntraUser.Surname, null, null)),
+            ("title", (syncedEntraUser.JobTitle, null, null))
+        ]);
+        _pureserviceUserService.NeedsBasicUpdate(pureserviceUserNonSyncedUser, Arg.Any<Microsoft.Graph.Models.User>(), null, true, userType).Returns(
+        [
+            ("disabled", (null, null, true))
+        ]);
+        _pureserviceUserService.NeedsUsernameUpdate(credentialSyncedUser, syncedEntraUser).Returns((false, null));
+        _pureserviceUserService.NeedsCompanyUpdate(pureserviceUserSyncedUser, syncedEntraUser, Arg.Any<List<Company>>()).ReturnsNull();
+        _pureserviceUserService.NeedsDepartmentUpdate(pureserviceUserSyncedUser, syncedEntraUser, Arg.Any<List<Company>>(), Arg.Any<List<CompanyDepartment>>()).ReturnsNull();
+        _pureserviceUserService.NeedsLocationUpdate(pureserviceUserSyncedUser, syncedEntraUser, Arg.Any<List<Company>>(), Arg.Any<List<CompanyLocation>>()).ReturnsNull();
+        _phoneNumberService.NeedsPhoneNumberUpdate(Arg.Any<PhoneNumber>(), Arg.Any<string>()).Returns((false, null));
+        _pureserviceUserService.UpdateBasicProperties(Arg.Any<int>(), Arg.Any<List<(string, (string?, int?, bool?))>>()).Returns(true);
+        
+        await _service.Synchronize(new TimerInfo());
+        
+        await _graphService.Received(1).GetEmployees();
+        await _graphService.Received(1).GetStudents();
+        await _pureserviceUserService.Received(1).GetUsers(Arg.Any<string[]>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<bool>());
+        await _companyService.Received(1).GetCompanies();
+        await _companyService.Received(1).GetDepartments();
+        await _companyService.Received(1).GetLocations();
+        
+        _pureserviceCaller.Received(2).NeedsToWait(Arg.Any<int>());
+        _pureserviceUserService.Received(1).NeedsBasicUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), handleStatusOnly: false, entraUserType: userType);
+        _pureserviceUserService.Received(1).NeedsBasicUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), handleStatusOnly: true, entraUserType: userType);
+        _pureserviceUserService.Received(1).NeedsUsernameUpdate(Arg.Any<Credential>(), Arg.Any<Microsoft.Graph.Models.User>());
+        _pureserviceUserService.Received(1).NeedsCompanyUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>());
+        _pureserviceUserService.Received(1).NeedsDepartmentUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>(), Arg.Any<List<CompanyDepartment>>());
+        _pureserviceUserService.Received(1).NeedsLocationUpdate(Arg.Any<User>(), Arg.Any<Microsoft.Graph.Models.User>(), Arg.Any<List<Company>>(), Arg.Any<List<CompanyLocation>>());
+        _graphService.Received(1).GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Is(Constants.CustomSecurityAttributeGroup), Arg.Is(Constants.CustomSecurityPhoneNumberAttributeName));
+        _graphService.Received(2)
+            .GetCustomSecurityAttribute(Arg.Any<Microsoft.Graph.Models.User>(), Arg.Is(Constants.CustomSecurityAttributeGroup), Arg.Is(Constants.CustomSecurityUserTypeAttributeName));
+        _phoneNumberService.Received(1).NeedsPhoneNumberUpdate(Arg.Any<PhoneNumber>(), Arg.Any<string>());
+        
+        await _pureserviceUserService.Received(2).UpdateBasicProperties(Arg.Any<int>(), Arg.Any<List<(string, (string?, int?, bool?))>>());
+        
+        await _companyService.DidNotReceive().AddCompany(Arg.Any<string>());
+        await _emailAddressService.DidNotReceive().EmailAddressExists(Arg.Any<string>());
+        await _pureserviceUserService.DidNotReceive().UpdateUsername(Arg.Any<int>(), Arg.Any<int>(), Arg.Any<string>());
+        await _emailAddressService.DidNotReceive().UpdateEmailAddress(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<int>());
+        await _pureserviceUserService.DidNotReceive().UpdateCompanyProperties(Arg.Any<int>(), Arg.Any<List<CompanyUpdateItem>>());
+        await _pureserviceUserService.DidNotReceive().RegisterPhoneNumberAsDefault(Arg.Any<int>(), Arg.Any<int>());
+        await _phoneNumberService.DidNotReceive().AddNewPhoneNumberAndLinkToUser(Arg.Any<string>(), Arg.Any<PhoneNumberType>(), Arg.Any<int>());
+        await _phoneNumberService.DidNotReceive().AddNewPhoneNumber(Arg.Any<string>(), Arg.Any<PhoneNumberType>());
+        await _phoneNumberService.DidNotReceive().UpdatePhoneNumber(Arg.Any<int>(), Arg.Any<string>(), Arg.Any<PhoneNumberType>(), Arg.Any<int>());
+        await _companyService.DidNotReceive().AddDepartment(Arg.Any<string>(), Arg.Any<int>());
+        await _companyService.DidNotReceive().AddLocation(Arg.Any<string>(), Arg.Any<int>());
+        
+        _metricsService.DidNotReceive().Count($"{Constants.MetricsPrefix}_ImportUniqueKeyUpdated", Arg.Any<string>(), Arg.Any<(string, string)>());
+    }
 
     // UpdateUser
     [Theory]
@@ -1063,6 +1282,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledSinceOutOfSyncCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -1211,6 +1431,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledSinceOutOfSyncCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
 
@@ -1361,6 +1582,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledSinceOutOfSyncCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
 
@@ -1599,6 +1821,7 @@ public class UserFunctionsTests
         Assert.Equal(1, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledSinceOutOfSyncCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -1851,6 +2074,7 @@ public class UserFunctionsTests
         Assert.Equal(1, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledSinceOutOfSyncCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -2109,6 +2333,7 @@ public class UserFunctionsTests
         Assert.Equal(1, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledSinceOutOfSyncCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -2358,6 +2583,7 @@ public class UserFunctionsTests
         Assert.Equal(1, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(1, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledSinceOutOfSyncCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -2488,6 +2714,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledSinceOutOfSyncCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -2648,6 +2875,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledSinceOutOfSyncCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
 
@@ -2739,6 +2967,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledSinceOutOfSyncCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -2819,6 +3048,7 @@ public class UserFunctionsTests
         Assert.Equal(1, synchronizationResult.UserEmailAddressCheckFailedCount);
         Assert.Equal(0, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledSinceOutOfSyncCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
@@ -2903,6 +3133,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressCheckFailedCount);
         Assert.Equal(1, synchronizationResult.UserEmailAddressAlreadyExistsCount);
         Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledSinceOutOfSyncCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
@@ -2989,6 +3220,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledSinceOutOfSyncCount);
         Assert.Equal(1, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -3082,6 +3314,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledSinceOutOfSyncCount);
         Assert.Equal(1, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -3184,6 +3417,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledSinceOutOfSyncCount);
         Assert.Equal(1, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -3287,6 +3521,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledSinceOutOfSyncCount);
         Assert.Equal(1, synchronizationResult.UserErrorCount);
         Assert.Equal(0, synchronizationResult.UserCreatedCount);
         
@@ -3416,6 +3651,7 @@ public class UserFunctionsTests
         Assert.Equal(0, synchronizationResult.UserEmailAddressUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserPhoneNumberUpdatedCount);
         Assert.Equal(0, synchronizationResult.UserImportUniqueKeyUpdatedCount);
+        Assert.Equal(0, synchronizationResult.UserDisabledSinceOutOfSyncCount);
         Assert.Equal(0, synchronizationResult.UserErrorCount);
         Assert.Equal(1, synchronizationResult.UserCreatedCount);
         

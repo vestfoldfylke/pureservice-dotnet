@@ -17,6 +17,7 @@ public class SynchronizationResult
     public int UserEmailAddressUpdatedCount { get; set; }
     public int UserPhoneNumberUpdatedCount { get; set; }
     public int UserImportUniqueKeyUpdatedCount { get; set; }
+    public int UserDisabledSinceOutOfSyncCount { get; set; }
     public int UserCreatedCount { get; set; }
     public int UserUpToDateCount { get; set; }
 }
