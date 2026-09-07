@@ -9,6 +9,9 @@
 <b>If a user leaves, the user in Pureservice is disabled but kept. If the user was out for longer than the retention periode in Entra, and the user joins again, the user has a new Entra user with a new ObjectId.<br/>
 If the user has the same `userPrincipalName` on the new Entra user, and a Pureservice user is found with this `userPrincipalName` which also is `disabled`, the `importUniqueKey` on this Pureservice user will be set to the new Entra user ObjectId</b>
 
+> [!IMPORTANT]
+> <b>If a user isn't part of the Entra ID sync anymore, the Pureservice user will be disabled!</b>
+
 | Property in Pureservice | Property in Source | Description                                                                                                           | Category     | Type   | Default Value |
 |-------------------------|--------------------|-----------------------------------------------------------------------------------------------------------------------|--------------|--------|---------------|
 | firstName               | givenName          | First name                                                                                                            | basic        | string | null          |
@@ -33,6 +36,9 @@ If the user has the same `userPrincipalName` on the new Entra user, and a Purese
 
 <b>If a user leaves, the user in Pureservice is disabled but kept. If the user was out for longer than the retention periode in Entra, and the user joins again, the user has a new Entra user with a new ObjectId.<br/>
 If the user has the same `userPrincipalName` on the new Entra user, and a Pureservice user is found with this `userPrincipalName` which also is `disabled`, the `importUniqueKey` on this Pureservice user will be set to the new Entra user ObjectId</b>
+
+> [!IMPORTANT]
+> <b>If a user isn't part of the Entra ID sync anymore, the Pureservice user will be disabled!</b>
 
 | Property in Pureservice | Property in Source | Description                                                                                                           | Category     | Type   | Default Value |
 |-------------------------|--------------------|-----------------------------------------------------------------------------------------------------------------------|--------------|--------|---------------|
