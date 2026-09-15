@@ -599,8 +599,8 @@ public class UserFunctionsTests
             ("firstName", (entraUserWithNewId.GivenName, null, null)),
             ("lastName", (entraUserWithNewId.Surname, null, null)),
             ("title", (entraUserWithNewId.JobTitle, null, null)),
-            (_userTypeCustomField, (userType, null, null)),
-            ("importUniqueKey", (entraUserWithNewId.Id, null, null))
+            ("importUniqueKey", (entraUserWithNewId.Id, null, null)),
+            (_userTypeCustomField, (userType, null, null))
         };
         
         var basicPropertiesToUpdateWithSameId = new List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))>
@@ -678,8 +678,8 @@ public class UserFunctionsTests
             basicUserPropertiesToUpdate.Exists(property => property.Item1 == "firstName" && property.Item2.Item1 == entraUserWithNewId.GivenName) &&
             basicUserPropertiesToUpdate.Exists(property => property.Item1 == "lastName" && property.Item2.Item1 == entraUserWithNewId.Surname) &&
             basicUserPropertiesToUpdate.Exists(property => property.Item1 == "title" && property.Item2.Item1 == entraUserWithNewId.JobTitle) &&
-            basicUserPropertiesToUpdate.Exists(property => property.Item1 == _userTypeCustomField && property.Item2.Item1 == userType) &&
-            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "importUniqueKey" && property.Item2.Item1 == entraUserWithNewId.Id)
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "importUniqueKey" && property.Item2.Item1 == entraUserWithNewId.Id) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == _userTypeCustomField && property.Item2.Item1 == userType)
         ));
         
         await _pureserviceUserService.Received(1).UpdateBasicProperties(Arg.Is(pureserviceUserWithSameId.Id), Arg.Is<List<(string, (string?, int?, bool?))>>(basicUserPropertiesToUpdate =>
@@ -786,8 +786,8 @@ public class UserFunctionsTests
             ("firstName", (entraUserWithNewId.GivenName, null, null)),
             ("lastName", (entraUserWithNewId.Surname, null, null)),
             ("title", (entraUserWithNewId.JobTitle, null, null)),
-            (_userTypeCustomField, (userType, null, null)),
-            ("importUniqueKey", (entraUserWithNewId.Id, null, null))
+            ("importUniqueKey", (entraUserWithNewId.Id, null, null)),
+            (_userTypeCustomField, (userType, null, null))
         };
         
         _pureserviceUserService.GetUsers(Arg.Any<string[]>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<bool>())
@@ -837,8 +837,8 @@ public class UserFunctionsTests
             basicUserPropertiesToUpdate.Exists(property => property.Item1 == "firstName" && property.Item2.Item1 == entraUserWithNewId.GivenName) &&
             basicUserPropertiesToUpdate.Exists(property => property.Item1 == "lastName" && property.Item2.Item1 == entraUserWithNewId.Surname) &&
             basicUserPropertiesToUpdate.Exists(property => property.Item1 == "title" && property.Item2.Item1 == entraUserWithNewId.JobTitle) &&
-            basicUserPropertiesToUpdate.Exists(property => property.Item1 == _userTypeCustomField && property.Item2.Item1 == userType) &&
-            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "importUniqueKey" && property.Item2.Item1 == entraUserWithNewId.Id)
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == "importUniqueKey" && property.Item2.Item1 == entraUserWithNewId.Id) &&
+            basicUserPropertiesToUpdate.Exists(property => property.Item1 == _userTypeCustomField && property.Item2.Item1 == userType)
         ));
         
         _metricsService.DidNotReceive().Count($"{Constants.MetricsPrefix}_ImportUniqueKeyUpdated", Arg.Any<string>(), Arg.Any<(string, string)>());
