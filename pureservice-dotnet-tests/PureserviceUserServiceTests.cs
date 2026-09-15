@@ -18,6 +18,7 @@ public class PureserviceUserServiceTests
     private readonly IPureserviceCaller _pureserviceCaller;
 
     private readonly string _userTypeCustomField;
+    private readonly string _privateEmailCustomField;
     
     public PureserviceUserServiceTests()
     {
@@ -31,6 +32,7 @@ public class PureserviceUserServiceTests
             Substitute.For<IMetricsService>(), _pureserviceCaller);
         
         _userTypeCustomField = userServiceConfiguration["User_Type_Custom_Field_Id"] ?? throw new InvalidOperationException("User_Type_Custom_Field_Id configuration value is not set");
+        _privateEmailCustomField = userServiceConfiguration["Private_Email_Address_Custom_Field_Id"] ??  throw new InvalidOperationException("Private_Email_Address_Custom_Field_Id configuration value is not set");
     }
 
     // CreateNewUser
@@ -58,6 +60,7 @@ public class PureserviceUserServiceTests
         const int phoneNumberId = 8;
 
         var userType = allProperties ? "Biz" : null;
+        var privateEmail = allProperties ? null : "Baz";
 
         var newPureserviceUser = new User
         {
@@ -89,7 +92,7 @@ public class PureserviceUserServiceTests
         _pureserviceCaller.PostAsync<User>(Arg.Is<string>(str => str.StartsWith("user")), Arg.Any<object>())
             .Returns(newPureserviceUser);
         
-        var userList = await _service.CreateNewUser(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId, userType);
+        var userList = await _service.CreateNewUser(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId, userType, privateEmail);
         
         Assert.NotNull(userList);
     }
@@ -117,6 +120,7 @@ public class PureserviceUserServiceTests
         const int physicalAddressId = 7;
         
         const string userType = "Biz";
+        var privateEmail = hasPhoneNumber ? null : "Baz";
         
         int? phoneNumberId = hasPhoneNumber ? 8 : null;
 
@@ -152,7 +156,7 @@ public class PureserviceUserServiceTests
             Arg.Is<object>(obj => HasPayloadPhoneNumber(obj, hasPhoneNumber))
         ).Returns(newPureserviceUser);
         
-        var userList = await _service.CreateNewUser(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId, userType);
+        var userList = await _service.CreateNewUser(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId, userType, privateEmail);
         
         Assert.NotNull(userList);
     }
@@ -180,7 +184,7 @@ public class PureserviceUserServiceTests
         _pureserviceCaller.PostAsync<User>(Arg.Is<string>(str => str.StartsWith("user")), Arg.Any<object>())
             .ReturnsNull();
         
-        var userList = await _service.CreateNewUser(entraUser, null, companyId, physicalAddressId, phoneNumberId, emailAddressId, userType);
+        var userList = await _service.CreateNewUser(entraUser, null, companyId, physicalAddressId, phoneNumberId, emailAddressId, userType, null);
         
         Assert.Null(userList);
     }
@@ -1075,18 +1079,21 @@ public class PureserviceUserServiceTests
         const int phoneNumberId = 8;
 
         var userType = hasUserType ? "Biz" : null;
+        var privateEmail = hasUserType ? null : "Baz";
 
-        var payload = _service.GetNewUserPayload(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId, userType);
+        var payload = _service.GetNewUserPayload(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId, userType, privateEmail);
 
         var payloadJson = JsonSerializer.Serialize(payload);
 
         if (!hasUserType)
         {
             Assert.Contains($"\"{_userTypeCustomField}\":null", payloadJson);
+            Assert.Contains($"\"{_privateEmailCustomField}\":\"{privateEmail}\"", payloadJson);
             return;
         }
         
         Assert.Contains($"\"{_userTypeCustomField}\":\"{userType}\"", payloadJson);
+        Assert.Contains($"\"{_privateEmailCustomField}\":null", payloadJson);
     }
 
     private static bool HasPayloadPhoneNumber(object payload, bool shouldHavePhoneNumber)

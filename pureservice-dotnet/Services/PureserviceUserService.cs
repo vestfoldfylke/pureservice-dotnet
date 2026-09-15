@@ -14,15 +14,16 @@ namespace pureservice_dotnet.Services;
 
 public interface IPureserviceUserService
 {
-    Task<User?> CreateNewUser(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId, int physicalAddressId, int? phoneNumberId, int emailAddressId, string? userType);
+    Task<User?> CreateNewUser(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId, int physicalAddressId, int? phoneNumberId, int emailAddressId, string? userType, string? privateEmail = null);
     Task<User?> CreateManualUser(string givenName, string surname, int? physicalAddressId, int phoneNumberId, int emailAddressId, string notes);
     Dictionary<string, object?> GetNewUserPayload(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId, int physicalAddressId, int? phoneNumberId, int emailAddressId,
-        string? userType);
+        string? userType, string? privateEmail);
     Dictionary<string, object?> GetManualUserPayload(string givenName, string surname, int? physicalAddressId, int phoneNumberId, int emailAddressId, string notes);
     Task<User?> GetUserByEmailAddress(string emailAddress);
     Task<UserList> GetUserById(int userId, string[]? entities = null);
     Task<UserList> GetUsers(string[]? entities = null, int start = 0, int limit = 500, bool includeSystemUsers = false, bool includeInactiveUsers = false);
-    List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))> NeedsBasicUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser = null, bool? handleStatusOnly = false, string? entraUserType = null);
+    List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))> NeedsBasicUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser = null,
+        bool? handleStatusOnly = false, string? entraUserType = null, string? entraPrivateEmail = null);
     CompanyUpdateItem? NeedsCompanyUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies);
     CompanyUpdateItem? NeedsDepartmentUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies, List<CompanyDepartment> companyDepartments);
     CompanyUpdateItem? NeedsLocationUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, List<Company> companies, List<CompanyLocation> companyLocations);
@@ -42,6 +43,7 @@ public class PureserviceUserService : IPureserviceUserService
     
     private const string BasePath = "user";
     private readonly string _userTypeCustomField;
+    private readonly string _privateEmailCustomField;
     
     public PureserviceUserService(IConfiguration configuration, ILogger<PureserviceUserService> logger, IMetricsService metricsService, IPureserviceCaller pureserviceCaller)
     {
@@ -50,11 +52,12 @@ public class PureserviceUserService : IPureserviceUserService
         _pureserviceCaller = pureserviceCaller;
         
         _userTypeCustomField = configuration["User_Type_Custom_Field_Id"] ?? throw new InvalidOperationException("User_Type_Custom_Field_Id configuration value is not set");
+        _privateEmailCustomField = configuration["Private_Email_Address_Custom_Field_Id"] ?? throw new InvalidOperationException("Private_Email_Address_Custom_Field_Id configuration value is not set");
     }
 
-    public async Task<User?> CreateNewUser(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId, int physicalAddressId, int? phoneNumberId, int emailAddressId, string? userType)
+    public async Task<User?> CreateNewUser(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId, int physicalAddressId, int? phoneNumberId, int emailAddressId, string? userType, string? privateEmail)
     {
-        var payload = GetNewUserPayload(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId, userType);
+        var payload = GetNewUserPayload(entraUser, managerId, companyId, physicalAddressId, phoneNumberId, emailAddressId, userType, privateEmail);
         
         _logger.LogInformation("Creating new Pureservice user with ImportUniqueKey {ImportUniqueKey}", entraUser.Id);
         var result = await _pureserviceCaller.PostAsync<User>($"{BasePath}?include=company,company.departments,company.locations,emailaddress,language,phonenumbers", payload);
@@ -232,7 +235,8 @@ public class PureserviceUserService : IPureserviceUserService
         return userList;
     }
 
-    public List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))> NeedsBasicUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser = null, bool? handleStatusOnly = false, string? entraUserType = null)
+    public List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))> NeedsBasicUpdate(User pureserviceUser, Microsoft.Graph.Models.User entraUser, User? pureserviceManagerUser = null,
+        bool? handleStatusOnly = false, string? entraUserType = null, string? entraPrivateEmail = null)
     {
         List<(string propertyName, (string? stringValue, int? intValue, bool? boolValue))> propertiesToUpdate = [];
         
@@ -275,6 +279,12 @@ public class PureserviceUserService : IPureserviceUserService
         if (currentUserType != entraUserType)
         {
             propertiesToUpdate.Add((_userTypeCustomField, (entraUserType, null, null)));
+        }
+        
+        var currentPrivateEmail = GetCustomFieldValueFromPureserviceUser<string?>(pureserviceUser, _privateEmailCustomField) as string;
+        if (currentPrivateEmail != entraPrivateEmail)
+        {
+            propertiesToUpdate.Add((_privateEmailCustomField, (entraPrivateEmail, null, null)));
         }
         
         return propertiesToUpdate;
@@ -494,7 +504,7 @@ public class PureserviceUserService : IPureserviceUserService
         return false;
     }
 
-    public Dictionary<string, object?> GetNewUserPayload(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId, int physicalAddressId, int? phoneNumberId, int emailAddressId, string? userType)
+    public Dictionary<string, object?> GetNewUserPayload(Microsoft.Graph.Models.User entraUser, int? managerId, int companyId, int physicalAddressId, int? phoneNumberId, int emailAddressId, string? userType, string? privateEmail)
     {
         var userPayload = new Dictionary<string, object?>
         {
@@ -514,6 +524,7 @@ public class PureserviceUserService : IPureserviceUserService
             ["notificationScheme"] = 1,
             ["languageId"] = 2,
             [_userTypeCustomField] = userType,
+            [_privateEmailCustomField] = privateEmail,
             ["links"] = new Dictionary<string, object?>
             {
                 ["address"] = new Dictionary<string, object?> { ["id"] = physicalAddressId, ["type"] = "physicaladdress" },
