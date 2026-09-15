@@ -266,15 +266,15 @@ public class PureserviceUserService : IPureserviceUserService
             propertiesToUpdate.Add(("managerId", (null, pureserviceManagerUser?.Id, null)));
         }
 
+        if (pureserviceUser.ImportUniqueKey != entraUser.Id)
+        {
+            propertiesToUpdate.Add(("importUniqueKey", (entraUser.Id, null, null)));
+        }
+
         var currentUserType = GetCustomFieldValueFromPureserviceUser<string?>(pureserviceUser, _userTypeCustomField) as string;
         if (currentUserType != entraUserType)
         {
             propertiesToUpdate.Add((_userTypeCustomField, (entraUserType, null, null)));
-        }
-
-        if (pureserviceUser.ImportUniqueKey != entraUser.Id)
-        {
-            propertiesToUpdate.Add(("importUniqueKey", (entraUser.Id, null, null)));
         }
         
         return propertiesToUpdate;
