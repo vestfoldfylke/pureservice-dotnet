@@ -10,4 +10,5 @@ public static class Constants
     public static string CustomSecurityAttributeGroup => "IDM";
     public static string CustomSecurityPhoneNumberAttributeName => "Mobile";
     public static string CustomSecurityUserTypeAttributeName => "Brukertype";
+    public static string CustomSecurityPrivateEmailAttributeName => "Privatmail";
 }

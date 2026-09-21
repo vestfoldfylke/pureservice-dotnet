@@ -1,5 +1,3 @@
-using System;
-
 namespace pureservice_dotnet.Models;
 
 public class PhysicalAddress : PureserviceBase

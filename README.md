@@ -24,6 +24,7 @@ If the user has the same `userPrincipalName` on the new Entra user, and a Purese
 | emailAddressId          | mail               | Email address                                                                                                         | emailaddress | int    | null          |
 | phoneNumberId           | csa.mobile         | Mobile phone number                                                                                                   | phonenumber  | int    | null          |
 | cf_1 (Brukertype)       | csa.brukertype     | Custom field 1 (set to Brukertype from Custom Security Attribute)                                                     | customfield  | string | null          |
+| cf_2 (Private epost)    | csa.privatmail     | Custom field 2 (set to Privatmail from Custom Security Attribute)                                                     | customfield  | string | null          |
 | disabled                | accountEnabled     | Disabled                                                                                                              | basic        | int    | false         |
 | languageId              | preferredLanguage  | Language (set to Norwegian for now)                                                                                   | basic        | int    | Norwegian     |
 | role                    |                    | Role (UserRole) (only set on creation)                                                                                | basic        | int    | Sluttbruker   |
@@ -51,6 +52,7 @@ If the user has the same `userPrincipalName` on the new Entra user, and a Purese
 | emailAddressId          | mail               | Email address                                                                                                         | emailaddress | int    | null          |
 | phoneNumberId           | csa.mobile         | Mobile phone number                                                                                                   | phonenumber  | int    | null          |
 | cf_1 (Brukertype)       | csa.brukertype     | Custom field 1 (set to Brukertype from Custom Security Attribute)                                                     | customfield  | string | null          |
+| cf_2 (Private epost)    | csa.privatmail     | Custom field 2 (set to Privatmail from Custom Security Attribute)                                                     | customfield  | string | null          |
 | disabled                | accountEnabled     | Disabled                                                                                                              | basic        | int    | false         |
 | languageId              | preferredLanguage  | Language (set to Norwegian for now)                                                                                   | basic        | int    | Norwegian     |
 | role                    |                    | Role (UserRole) (only set on creation)                                                                                | basic        | int    | Sluttbruker   |
@@ -132,8 +134,9 @@ Create a `local.settings.json` file in the `pureservice-dotnet` folder with the 
     "Employee_Auto_Disabled_Users_OU": "OU=path,OU=to,OU=auto-disabled-users-ou,DC=domain,DC=something,DC=edu",
     "Student_Email_Domain": "@school.edu",
     "Student_Job_Titles": "school-job-title;another-school-job-title",
-    "User_Type_Custom_Field_Id": "cf_1"
-  }
+    "User_Type_Custom_Field_Id": "cf_1",
+    "Private_Email_Address_Custom_Field_Id": "cf_2"
+  } 
 }
 ```
 

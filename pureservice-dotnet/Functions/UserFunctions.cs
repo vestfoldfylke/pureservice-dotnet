@@ -234,9 +234,9 @@ public class UserFunctions
         }
         
         var entraUserType = _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityUserTypeAttributeName);
+        var entraPrivateEmail = _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPrivateEmailAttributeName);
 
-        var pureserviceUser = await _pureserviceUserService.CreateNewUser(entraUser, pureserviceManagerUser?.Id, companyId, physicalAddressResult.Id, pureservicePhoneNumber?.Id, pureserviceEmailAddress.Id, entraUserType);
-
+        var pureserviceUser = await _pureserviceUserService.CreateNewUser(entraUser, pureserviceManagerUser?.Id, companyId, physicalAddressResult.Id, pureservicePhoneNumber?.Id, pureserviceEmailAddress.Id, entraUserType, entraPrivateEmail);
         if (pureserviceUser is null)
         {
             synchronizationResult.UserErrorCount++;
@@ -288,8 +288,9 @@ public class UserFunctions
         var shouldBeDisabled = entraUser.AccountEnabled.HasValue && !entraUser.AccountEnabled.Value && !pureserviceUser.Disabled;
         
         var entraUserType = _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityUserTypeAttributeName);
+        var entraPrivateEmail = _graphService.GetCustomSecurityAttribute(entraUser, Constants.CustomSecurityAttributeGroup, Constants.CustomSecurityPrivateEmailAttributeName);
         
-        var basicPropertiesToUpdate = _pureserviceUserService.NeedsBasicUpdate(pureserviceUser, entraUser, pureserviceManagerUser, shouldBeDisabled, entraUserType);
+        var basicPropertiesToUpdate = _pureserviceUserService.NeedsBasicUpdate(pureserviceUser, entraUser, pureserviceManagerUser, shouldBeDisabled, entraUserType, entraPrivateEmail);
         
         if (shouldBeDisabled && basicPropertiesToUpdate.Count == 1)
         {
