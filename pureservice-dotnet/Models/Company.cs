@@ -6,8 +6,8 @@ namespace pureservice_dotnet.Models;
 public class Company : PureserviceBase
 {
     public required string Name { get; init; }
-    public int? OrganizationNumber { get; init; }
-    public int? CompanyNumber { get; init; }
+    public string? OrganizationNumber { get; init; }
+    public string? CompanyNumber { get; init; }
     public string? Website { get; init; }
     public string? SupportWebsite { get; init; }
     [JsonPropertyName("phonenumberId")]
